@@ -1,0 +1,593 @@
+{% extends "base.html" %}
+
+{% block title %}华夏篮球联赛教练模拟器 - 当日比赛{% endblock %}
+
+{% block content %}
+<div class="daily-games-container">
+    <div class="daily-games-header">
+        <div>
+            <h1>📺 当日比赛</h1>
+            <p class="text-muted">查看所有比赛和详细统计</p>
+        </div>
+        <div>
+            <button class="btn btn-secondary" onclick="GameApp.showPage('dashboard')">
+                ← 返回控制台
+            </button>
+        </div>
+    </div>
+
+    <!-- 日期选择 -->
+    <div class="card mb-2">
+        <div class="card-body">
+            <div class="date-picker">
+                <button class="btn btn-sm btn-outline" onclick="GameApp.changeDailyGamesDate(-1)">
+                    ← 前一天
+                </button>
+                <input type="date" class="form-control" id="daily-games-date" 
+                       style="max-width: 200px;" onchange="GameApp.loadDailyGames()">
+                <button class="btn btn-sm btn-outline" onclick="GameApp.changeDailyGamesDate(1)">
+                    后一天 →
+                </button>
+                <button class="btn btn-sm btn-primary" onclick="GameApp.loadDailyGamesToday()">
+                    今天
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 比赛统计摘要 -->
+    <div class="card mb-2" id="daily-games-summary">
+        <div class="card-body">
+            <div class="daily-summary-stats">
+                <div class="summary-stat">
+                    <span class="summary-value" id="total-games-count">0</span>
+                    <span class="summary-label">场比赛</span>
+                </div>
+                <div class="summary-stat">
+                    <span class="summary-value" id="played-games-count">0</span>
+                    <span class="summary-label">已完成</span>
+                </div>
+                <div class="summary-stat">
+                    <span class="summary-value" id="scheduled-games-count">0</span>
+                    <span class="summary-label">未开始</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 比赛列表 -->
+    <div id="daily-games-list">
+        <!-- 动态加载 -->
+    </div>
+
+    <!-- 无比赛提示 -->
+    <div id="no-daily-games" class="card hidden">
+        <div class="card-body text-center" style="padding: 50px;">
+            <div style="font-size: 3rem; margin-bottom: 15px;">📅</div>
+            <h3>今日无比赛</h3>
+            <p class="text-muted">选择其他日期查看比赛</p>
+        </div>
+    </div>
+</div>
+
+<style>
+/* ============================================
+   每日比赛页面增强样式 (Requirements 6.1, 6.2, 6.3, 6.4, 6.5)
+   Task 7.1: 优化比赛卡片样式
+   Task 7.2: 优化球员统计表格样式
+   Task 7.3: 添加无数据提示
+   ============================================ */
+
+/* 统计摘要样式 */
+.daily-summary-stats {
+    display: flex;
+    justify-content: center;
+    gap: 50px;
+    padding: 10px 0;
+}
+
+.summary-stat {
+    text-align: center;
+    position: relative;
+}
+
+.summary-stat:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    right: -25px;
+    top: 50%;
+    transform: translateY(-50%);
+    height: 40px;
+    width: 1px;
+    background: var(--border-color);
+}
+
+.summary-value {
+    display: block;
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--primary-color);
+    line-height: 1.2;
+}
+
+.summary-label {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin-top: 4px;
+}
+
+/* ============================================
+   Task 7.1: 比赛卡片增强样式 (Requirements 6.1, 6.5)
+   - 改善卡片布局和间距
+   - 添加更清晰的视觉层次
+   ============================================ */
+.game-card-enhanced {
+    background: var(--card-background);
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    margin-bottom: 20px;
+    overflow: hidden;
+    transition: all 0.3s ease;
+    border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.game-card-enhanced:hover {
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+    transform: translateY(-2px);
+}
+
+.game-card-header-enhanced {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 24px 28px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    background: linear-gradient(135deg, rgba(29, 53, 87, 0.02), rgba(69, 123, 157, 0.02));
+    border-bottom: 1px solid transparent;
+}
+
+.game-card-header-enhanced:hover {
+    background: linear-gradient(135deg, rgba(29, 53, 87, 0.06), rgba(69, 123, 157, 0.06));
+}
+
+.game-matchup {
+    display: flex;
+    align-items: center;
+    gap: 30px;
+    flex: 1;
+    justify-content: center;
+}
+
+.game-team-block {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 160px;
+    padding: 8px 16px;
+    border-radius: 8px;
+    transition: background-color 0.2s;
+}
+
+.game-team-block:hover {
+    background: rgba(0, 0, 0, 0.02);
+}
+
+.game-team-name-enhanced {
+    font-weight: 600;
+    font-size: 1.15rem;
+    color: var(--text-primary);
+    margin-bottom: 8px;
+    text-align: center;
+}
+
+.game-team-score {
+    font-size: 2.5rem;
+    font-weight: 800;
+    color: var(--secondary-color);
+    line-height: 1;
+    transition: color 0.2s;
+}
+
+.game-team-score.winner {
+    color: var(--success-color);
+    text-shadow: 0 2px 4px rgba(40, 167, 69, 0.2);
+}
+
+.game-vs-divider {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0 20px;
+}
+
+.vs-text-enhanced {
+    font-size: 1.1rem;
+    color: var(--text-secondary);
+    font-weight: 600;
+    background: var(--background-color);
+    padding: 8px 16px;
+    border-radius: 20px;
+    border: 1px solid var(--border-color);
+}
+
+.game-status-badge {
+    padding: 8px 18px;
+    border-radius: 25px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.game-status-badge.status-finished {
+    background: linear-gradient(135deg, var(--success-color), #1e7e34);
+    color: white;
+}
+
+.game-status-badge.status-scheduled {
+    background: linear-gradient(135deg, var(--text-secondary), #5a6268);
+    color: white;
+}
+
+.expand-icon {
+    margin-left: 12px;
+    transition: transform 0.3s ease;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+.expand-icon.expanded {
+    transform: rotate(180deg);
+}
+
+/* 比赛详情增强样式 */
+.game-details-enhanced {
+    padding: 0;
+    border-top: 1px solid var(--border-color);
+    background: linear-gradient(180deg, var(--background-color), #ffffff);
+    display: none;
+    animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.game-details-enhanced.expanded {
+    display: block;
+}
+
+.team-stats-section {
+    padding: 24px 28px;
+}
+
+.team-stats-section:first-child {
+    border-bottom: 2px solid var(--border-color);
+    background: rgba(29, 53, 87, 0.02);
+}
+
+.team-stats-section:last-child {
+    background: rgba(69, 123, 157, 0.02);
+}
+
+.team-stats-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 18px;
+    padding-bottom: 12px;
+    border-bottom: 3px solid var(--primary-color);
+}
+
+.team-stats-title {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--secondary-color);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.team-total-score {
+    font-size: 1.3rem;
+    font-weight: 800;
+    color: var(--primary-color);
+    background: linear-gradient(135deg, rgba(230, 57, 70, 0.15), rgba(230, 57, 70, 0.05));
+    padding: 6px 16px;
+    border-radius: 25px;
+    border: 2px solid rgba(230, 57, 70, 0.2);
+}
+
+/* ============================================
+   Task 7.2: 球员统计表格增强样式 (Requirements 6.2, 6.3)
+   - 添加表头样式
+   - 添加交替行颜色
+   - 高亮显示优秀数据
+   ============================================ */
+.player-stats-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 0.9rem;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+/* 表头样式 (Requirements 6.2) */
+.player-stats-table thead {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+
+.player-stats-table th {
+    background: linear-gradient(135deg, var(--secondary-color), #2a4a6e);
+    color: white;
+    padding: 14px 12px;
+    text-align: center;
+    font-weight: 600;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    border-bottom: 2px solid var(--primary-color);
+}
+
+.player-stats-table th:first-child {
+    text-align: left;
+    padding-left: 18px;
+    border-radius: 8px 0 0 0;
+}
+
+.player-stats-table th:last-child {
+    border-radius: 0 8px 0 0;
+}
+
+/* 表格单元格样式 */
+.player-stats-table td {
+    padding: 12px;
+    text-align: center;
+    border-bottom: 1px solid var(--border-color);
+    transition: background-color 0.15s ease;
+}
+
+.player-stats-table td:first-child {
+    text-align: left;
+    padding-left: 18px;
+    font-weight: 600;
+    color: var(--secondary-color);
+}
+
+/* 交替行颜色 (Requirements 6.2) */
+.player-stats-table tbody tr:nth-child(odd) {
+    background: #ffffff;
+}
+
+.player-stats-table tbody tr:nth-child(even) {
+    background: rgba(69, 123, 157, 0.05);
+}
+
+/* 悬停效果 */
+.player-stats-table tbody tr:hover {
+    background: rgba(230, 57, 70, 0.08);
+}
+
+.player-stats-table tbody tr:last-child td:first-child {
+    border-radius: 0 0 0 8px;
+}
+
+.player-stats-table tbody tr:last-child td:last-child {
+    border-radius: 0 0 8px 0;
+}
+
+/* 高亮数据样式 (Requirements 6.3) */
+.stat-highlight {
+    font-weight: 700;
+    color: var(--primary-color);
+}
+
+/* 20+得分特别高亮 */
+.stat-highlight.points-20plus {
+    background: linear-gradient(135deg, rgba(230, 57, 70, 0.2), rgba(230, 57, 70, 0.08));
+    padding: 4px 10px;
+    border-radius: 6px;
+    display: inline-block;
+    min-width: 36px;
+    box-shadow: 0 1px 3px rgba(230, 57, 70, 0.2);
+    animation: pulseHighlight 2s ease-in-out infinite;
+}
+
+@keyframes pulseHighlight {
+    0%, 100% {
+        box-shadow: 0 1px 3px rgba(230, 57, 70, 0.2);
+    }
+    50% {
+        box-shadow: 0 2px 8px rgba(230, 57, 70, 0.35);
+    }
+}
+
+/* 10+篮板/助攻高亮 */
+.stat-highlight.double-digit {
+    color: var(--accent-color);
+    font-weight: 700;
+    background: rgba(69, 123, 157, 0.12);
+    padding: 3px 8px;
+    border-radius: 4px;
+    display: inline-block;
+}
+
+/* 30+得分超级高亮 */
+.stat-highlight.points-30plus {
+    background: linear-gradient(135deg, rgba(255, 193, 7, 0.3), rgba(230, 57, 70, 0.2));
+    padding: 4px 10px;
+    border-radius: 6px;
+    display: inline-block;
+    min-width: 36px;
+    box-shadow: 0 2px 6px rgba(255, 193, 7, 0.3);
+    color: #c41e3a;
+    font-weight: 800;
+}
+
+/* 5+抢断/盖帽高亮 */
+.stat-highlight.defensive-highlight {
+    color: var(--success-color);
+    font-weight: 600;
+    background: rgba(40, 167, 69, 0.1);
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+
+/* ============================================
+   Task 7.3: 无数据提示样式 (Requirements 6.4)
+   - 当比赛无统计数据时显示友好提示
+   ============================================ */
+.no-stats-message {
+    text-align: center;
+    padding: 50px 30px;
+    color: var(--text-secondary);
+    background: linear-gradient(135deg, rgba(108, 117, 125, 0.05), rgba(108, 117, 125, 0.02));
+    border-radius: 12px;
+    margin: 10px;
+}
+
+.no-stats-message-icon {
+    font-size: 3rem;
+    margin-bottom: 15px;
+    opacity: 0.6;
+}
+
+.no-stats-message-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 8px;
+}
+
+.no-stats-message-text {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    font-style: italic;
+}
+
+/* 比赛未开始提示 */
+.game-not-started-message {
+    text-align: center;
+    padding: 40px 30px;
+    background: linear-gradient(135deg, rgba(69, 123, 157, 0.08), rgba(69, 123, 157, 0.02));
+    border-radius: 12px;
+    margin: 15px;
+    border: 1px dashed var(--accent-color);
+}
+
+.game-not-started-message .icon {
+    font-size: 2.5rem;
+    margin-bottom: 12px;
+}
+
+.game-not-started-message .title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--secondary-color);
+    margin-bottom: 6px;
+}
+
+.game-not-started-message .subtitle {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+/* ============================================
+   响应式调整
+   ============================================ */
+@media (max-width: 768px) {
+    .daily-summary-stats {
+        gap: 25px;
+        flex-wrap: wrap;
+    }
+    
+    .summary-stat:not(:last-child)::after {
+        display: none;
+    }
+    
+    .summary-value {
+        font-size: 1.6rem;
+    }
+    
+    .game-card-header-enhanced {
+        padding: 18px 16px;
+        flex-direction: column;
+        gap: 15px;
+    }
+    
+    .game-matchup {
+        flex-direction: column;
+        gap: 15px;
+    }
+    
+    .game-team-block {
+        min-width: auto;
+        width: 100%;
+    }
+    
+    .game-team-score {
+        font-size: 2rem;
+    }
+    
+    .game-vs-divider {
+        padding: 8px 0;
+    }
+    
+    .team-stats-section {
+        padding: 18px 14px;
+    }
+    
+    .player-stats-table {
+        font-size: 0.8rem;
+    }
+    
+    .player-stats-table th,
+    .player-stats-table td {
+        padding: 10px 6px;
+    }
+    
+    .player-stats-table th:first-child,
+    .player-stats-table td:first-child {
+        padding-left: 10px;
+    }
+    
+    .no-stats-message {
+        padding: 35px 20px;
+    }
+}
+
+@media (max-width: 480px) {
+    .game-team-name-enhanced {
+        font-size: 1rem;
+    }
+    
+    .game-team-score {
+        font-size: 1.8rem;
+    }
+    
+    .team-stats-header {
+        flex-direction: column;
+        gap: 10px;
+        align-items: flex-start;
+    }
+    
+    .player-stats-table th,
+    .player-stats-table td {
+        padding: 8px 4px;
+        font-size: 0.75rem;
+    }
+}
+</style>
+{% endblock %}

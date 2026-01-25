@@ -1,0 +1,1709 @@
+{% extends "base.html" %}
+
+{% block title %}华夏篮球联赛模拟器{% endblock %}
+
+{% block content %}
+<!-- 主菜单 -->
+<div class="menu-container" id="main-menu">
+    <div class="menu-logo">🏀</div>
+    <h1 class="menu-title">华夏篮球联赛模拟器</h1>
+    <p class="menu-subtitle">使用AI技术驱动的真实篮球经理游戏</p>
+    
+    <div class="menu-buttons">
+        <button class="btn btn-primary btn-lg" id="btn-new-game">
+            🎮 新游戏
+        </button>
+        <button class="btn btn-secondary btn-lg" id="btn-load-game">
+            📂 读取存档
+        </button>
+        <button class="btn btn-outline btn-lg" id="btn-about">
+            ℹ️ 关于游戏
+        </button>
+    </div>
+</div>
+
+<!-- 球队选择页面 -->
+<div id="team-select-page" class="hidden">
+    <h2 class="mb-2">选择你的球队</h2>
+    <p class="text-muted mb-2">请选择一支球队开始征战</p>
+    <div class="team-grid" id="team-grid"></div>
+    <div class="mt-2 text-center">
+        <button class="btn btn-secondary" id="btn-back-menu">返回主菜单</button>
+        <button class="btn btn-primary" id="btn-start-game" disabled>开始游戏</button>
+    </div>
+</div>
+
+<!-- 存档选择页面 -->
+<div id="load-game-page" class="hidden">
+    <h2 class="mb-2">选择存档</h2>
+    <p class="text-muted mb-2">选择一个存档继续游戏</p>
+    <div class="save-slots" id="save-slots"></div>
+    <div class="mt-2 text-center">
+        <button class="btn btn-secondary" id="btn-back-menu-load">返回主菜单</button>
+        <button class="btn btn-primary" id="btn-load-selected" disabled>加载存档</button>
+    </div>
+</div>
+
+<!-- ========== Dashboard 控制台页面 ========== -->
+<div id="dashboard-page" class="hidden">
+    <div class="dashboard-container">
+        <!-- 顶部信息栏 -->
+        <div class="dashboard-header">
+            <div>
+                <div class="dashboard-date" id="current-date">加载中...</div>
+                <div class="text-muted" id="day-type">--</div>
+                <!-- 比赛日/训练日状态显示 -->
+                <div class="day-status-badge" id="day-status-badge" style="display: none;">
+                    <span id="day-status-text"></span>
+                </div>
+            </div>
+            <div class="dashboard-actions">
+                <button class="btn btn-secondary" onclick="GameApp.saveGame()">
+                    💾 保存游戏
+                </button>
+                <button class="btn btn-secondary" onclick="GameApp.exportPlayers()">
+                    📤 导出球员
+                </button>
+                <!-- 动态显示 "前往比赛" 或 "推进日期" 按钮 -->
+                <button class="btn btn-primary" id="btn-go-to-match" onclick="GameApp.goToMatch()" style="display: none;">
+                    🏀 前往比赛
+                </button>
+                <button class="btn btn-primary" id="btn-advance-day" onclick="GameApp.advanceDay()">
+                    ⏭️ 推进日期
+                </button>
+                <!-- 季后赛入口按钮 -->
+                <button class="btn btn-success" id="btn-enter-playoffs" onclick="GameApp.enterPlayoffs()" style="display: none;">
+                    🏆 前往季后赛
+                </button>
+            </div>
+        </div>
+
+        <!-- 球队状态卡片 -->
+        <div class="stats-row">
+            <div class="stat-card">
+                <div class="stat-value" id="team-name">--</div>
+                <div class="stat-label">我的球队</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="team-rank">--</div>
+                <div class="stat-label">当前排名</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="team-record">--</div>
+                <div class="stat-label">战绩 (胜-负)</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="team-win-pct">--</div>
+                <div class="stat-label">胜率</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value"><span id="team-budget-display">--</span><span style="font-size: 0.7em;">万</span></div>
+                <div class="stat-label">💰 经费</div>
+            </div>
+        </div>
+
+        <!-- 今日比赛提示 -->
+        <div class="today-game hidden" id="today-game-card">
+            <div class="today-game-title">📅 今日比赛</div>
+            <div class="today-game-teams">
+                <span id="today-home-team">--</span>
+                <span class="vs-text">VS</span>
+                <span id="today-away-team">--</span>
+            </div>
+            <div class="today-game-status" id="today-game-status" style="margin-top: 10px; text-align: center;">
+                <!-- 比赛状态：未开始/已完成 -->
+            </div>
+            <div class="text-center mt-2" id="today-game-action">
+                <button class="btn btn-lg" style="background: white; color: var(--primary-color);" 
+                        onclick="GameApp.goToMatch()">
+                    🏀 开始比赛
+                </button>
+            </div>
+        </div>
+
+        <!-- 快捷操作 -->
+        <div class="grid grid-2 mt-2">
+            <!-- 联赛排名 (常规赛显示) -->
+            <div class="card" id="standings-card">
+                <div class="card-header">🏆 联赛排名</div>
+                <div class="card-body">
+                    <div class="table-container">
+                        <table class="table" id="standings-table">
+                            <thead>
+                                <tr>
+                                    <th>排名</th>
+                                    <th>球队</th>
+                                    <th>胜</th>
+                                    <th>负</th>
+                                    <th>胜率</th>
+                                </tr>
+                            </thead>
+                            <tbody id="standings-body">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 季后赛对阵图 (季后赛阶段显示) -->
+            <div class="card" id="playoff-bracket-card" style="display: none;">
+                <div class="card-header">🏆 季后赛对阵</div>
+                <div class="card-body">
+                    <div id="playoff-bracket">
+                        <!-- 动态生成对阵图 -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- 近期赛程 (常规赛显示) -->
+            <div class="card" id="upcoming-games-card">
+                <div class="card-header">📅 近期赛程</div>
+                <div class="card-body">
+                    <div id="upcoming-games">
+                    </div>
+                </div>
+            </div>
+
+            <!-- 季后赛状态卡片 (季后赛阶段显示) -->
+            <div class="card" id="playoff-status-card" style="display: none;">
+                <div class="card-header">📊 季后赛状态</div>
+                <div class="card-body">
+                    <div id="playoff-status-content">
+                        <!-- 动态加载 -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 可用操作 -->
+        <div class="card mt-2">
+            <div class="card-header">🎯 可用操作</div>
+            <div class="card-body">
+                <div class="grid grid-4" id="available-actions">
+                    <button class="btn btn-outline" onclick="GameApp.showPage('roster')">
+                        👥 查看阵容
+                    </button>
+                    <button class="btn btn-outline" onclick="GameApp.showPage('training')" id="btn-training">
+                        🏋️ 球员训练
+                    </button>
+                    <button class="btn btn-outline" onclick="GameApp.showPage('trade')">
+                        🔄 交易中心
+                    </button>
+                    <button class="btn btn-outline" onclick="GameApp.showPage('leaderboard')">
+                        📊 数据榜单
+                    </button>
+                    <button class="btn btn-outline" onclick="GameApp.showPage('daily-games')">
+                        📺 当日比赛
+                    </button>
+                    <button class="btn btn-outline" onclick="GameApp.showPage('schedule')">
+                        📅 赛程表
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ========== Roster 阵容页面 ========== -->
+<div id="roster-page" class="hidden">
+    <div class="roster-container">
+        <div class="roster-header">
+            <div>
+                <h1>阵容管理</h1>
+                <p class="text-muted" id="roster-team-name">--</p>
+            </div>
+            <div>
+                <button class="btn btn-secondary" onclick="GameApp.showPage('dashboard')">
+                    ← 返回控制台
+                </button>
+            </div>
+        </div>
+
+        <!-- 球队切换控件 -->
+        <div class="card mb-2">
+            <div class="card-body">
+                <div class="team-switcher">
+                    <button class="btn btn-outline team-switch-btn" id="btn-prev-team" onclick="GameApp.switchRosterTeam(-1)">
+                        ◀ 上一队
+                    </button>
+                    <div class="team-switcher-info">
+                        <span class="team-switcher-name" id="roster-current-team-name">--</span>
+                        <span class="team-switcher-index" id="roster-team-index">1/20</span>
+                    </div>
+                    <button class="btn btn-outline team-switch-btn" id="btn-next-team" onclick="GameApp.switchRosterTeam(1)">
+                        下一队 ▶
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 常规赛/季后赛/总数据切换按钮 -->
+        <div class="card mb-2" id="roster-mode-card">
+            <div class="card-body">
+                <div class="roster-mode-toggle">
+                    <button class="btn btn-mode active" id="btn-roster-regular" onclick="GameApp.switchRosterMode('regular')">
+                        📅 常规赛数据
+                    </button>
+                    <button class="btn btn-mode" id="btn-roster-playoff" onclick="GameApp.switchRosterMode('playoff')">
+                        🏆 季后赛数据
+                    </button>
+                    <button class="btn btn-mode" id="btn-roster-total" onclick="GameApp.switchRosterMode('total')">
+                        📈 总数据
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                👥 球员列表
+                <span class="text-muted" style="font-weight: normal; font-size: 0.9rem;">
+                    (点击球员查看详情)
+                </span>
+            </div>
+            <div class="card-body">
+                <div class="table-container">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>球员</th>
+                                <th>位置</th>
+                                <th>年龄</th>
+                                <th>总评</th>
+                                <th>场次</th>
+                                <th>场均得分</th>
+                                <th>场均篮板</th>
+                                <th>场均助攻</th>
+                                <th>场均抢断</th>
+                                <th>场均盖帽</th>
+                                <th>状态</th>
+                            </tr>
+                        </thead>
+                        <tbody id="roster-body">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- ========== Training 训练页面 ========== -->
+<div id="training-page" class="hidden">
+    <div class="training-container">
+        <div class="roster-header">
+            <div>
+                <h1>🏋️ 球员训练</h1>
+                <p class="text-muted">选择训练项目提升球员能力（每次获得1~2训练点数）</p>
+            </div>
+            <div>
+                <button class="btn btn-secondary" onclick="GameApp.showPage('dashboard')">
+                    ← 返回控制台
+                </button>
+            </div>
+        </div>
+
+        <!-- 训练日提示 -->
+        <div class="card mb-2" id="training-status-card">
+            <div class="card-body text-center">
+                <div id="training-status">
+                </div>
+            </div>
+        </div>
+
+        <!-- 训练次数限制提示 -->
+        <div class="card mb-2" id="training-limit-card">
+            <div class="card-header">⏰ 今日训练次数</div>
+            <div class="card-body">
+                <div style="display: flex; justify-content: space-around; flex-wrap: wrap; gap: 20px;">
+                    <div style="text-align: center;">
+                        <div style="font-size: 1.5rem; font-weight: bold; color: var(--primary-color);" id="team-training-remaining">-</div>
+                        <small class="text-muted">全队训练剩余次数</small>
+                    </div>
+                    <div style="text-align: center;">
+                        <div style="font-size: 1.5rem; font-weight: bold; color: var(--primary-color);" id="individual-training-info">-</div>
+                        <small class="text-muted">每人单独训练上限</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 球队训练进度 -->
+        <div class="card mb-2">
+            <div class="card-header">📊 球队训练进度</div>
+            <div class="card-body" id="team-training-progress">
+                <div class="text-center text-muted">加载中...</div>
+            </div>
+        </div>
+
+        <!-- 训练项目选择 -->
+        <div class="card mb-2">
+            <div class="card-header">📋 选择训练项目 <span class="text-muted" style="font-weight: normal; font-size: 0.85rem;">(点击查看该项目训练进度)</span></div>
+            <div class="card-body">
+                <div class="training-programs" id="training-programs">
+                </div>
+            </div>
+        </div>
+
+        <!-- 球员选择 -->
+        <div class="card mb-2">
+            <div class="card-header">
+                👤 选择训练球员
+                <span class="text-muted" style="font-weight: normal; font-size: 0.9rem;">
+                    (不选择则训练全队)
+                </span>
+            </div>
+            <div class="card-body">
+                <div class="form-group">
+                    <select class="form-control form-select" id="training-player-select">
+                        <option value="">全队训练</option>
+                    </select>
+                </div>
+                <div id="player-training-remaining" class="mt-2 text-muted" style="display: none;">
+                    该球员今日剩余单独训练次数: <span id="player-remaining-count">2</span>
+                </div>
+                <!-- 选中球员的训练进度详情 -->
+                <div id="selected-player-progress" class="mt-2" style="display: none;">
+                </div>
+            </div>
+        </div>
+
+        <!-- 执行训练按钮 -->
+        <div class="text-center">
+            <button class="btn btn-primary btn-lg" id="btn-execute-training" onclick="GameApp.executeTraining()" disabled>
+                🏃 开始训练
+            </button>
+        </div>
+
+        <!-- 训练结果/进度显示 -->
+        <div class="card mt-2 hidden" id="training-result-card">
+            <div class="card-header">📈 训练进度</div>
+            <div class="card-body" id="training-result">
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ========== Trade 交易页面 ========== -->
+<div id="trade-page" class="hidden">
+    <div class="trade-page-container">
+        <div class="roster-header">
+            <div>
+                <h1>🔄 交易中心</h1>
+                <p class="text-muted">进行球员交易或搜索外援</p>
+            </div>
+            <div>
+                <button class="btn btn-secondary" onclick="GameApp.showPage('dashboard')">
+                    ← 返回控制台
+                </button>
+            </div>
+        </div>
+
+        <!-- 交易类型选择 -->
+        <div class="leaderboard-tabs mb-2">
+            <button class="leaderboard-tab active" data-tab="trade" onclick="GameApp.switchTradeTab('trade')">
+                🔄 球员交易
+            </button>
+            <button class="leaderboard-tab" data-tab="foreign-market" onclick="GameApp.switchTradeTab('foreign-market')">
+                🌍 外援市场
+            </button>
+        </div>
+
+        <!-- 球员交易面板 -->
+        <div id="trade-panel">
+            <div class="trade-container">
+                <!-- 我方球员 -->
+                <div class="trade-panel">
+                    <div class="trade-panel-title">我方球员 (选择要交易出去的球员)</div>
+                    <div id="my-players-list">
+                    </div>
+                </div>
+
+                <!-- 交易箭头 -->
+                <div class="trade-arrow">⇄</div>
+
+                <!-- 对方球员 -->
+                <div class="trade-panel">
+                    <div class="trade-panel-title">
+                        <select class="form-control form-select" id="trade-team-select">
+                            <option value="">选择交易对象球队</option>
+                        </select>
+                    </div>
+                    <div id="other-players-list" class="mt-1">
+                    </div>
+                </div>
+            </div>
+
+            <!-- 交易确认 -->
+            <div class="text-center mt-2">
+                <button class="btn btn-primary btn-lg" id="btn-propose-trade" onclick="GameApp.proposeTrade()" disabled>
+                    📤 发起交易
+                </button>
+            </div>
+
+            <!-- 交易结果展示区域 -->
+            <div id="trade-result-panel" class="trade-result-panel hidden">
+                <div class="trade-result-header">
+                    <span class="trade-result-icon" id="trade-result-icon">📋</span>
+                    <span class="trade-result-title" id="trade-result-title">交易结果</span>
+                </div>
+                <div class="trade-result-content" id="trade-result-content">
+                    <!-- 交易结果消息将显示在这里 -->
+                </div>
+                <button class="btn btn-secondary btn-sm trade-result-close" onclick="GameApp.closeTradeResult()">
+                    关闭
+                </button>
+            </div>
+        </div>
+
+        <!-- 外援市场面板 -->
+        <div id="foreign-market-panel" class="hidden">
+            <!-- 经费和搜索信息 -->
+            <div class="card mb-2">
+                <div class="card-header">💰 球队经费</div>
+                <div class="card-body">
+                    <div class="foreign-market-info">
+                        <div class="budget-display">
+                            <span class="budget-label">当前经费：</span>
+                            <span class="budget-value" id="team-budget">0</span>
+                            <span class="budget-unit">万元</span>
+                        </div>
+                        <div class="scout-cost-display">
+                            <span class="text-muted">普通搜索：<strong id="scout-cost">20</strong> 万元 | 定向搜索：<strong id="targeted-scout-cost">50</strong> 万元</span>
+                        </div>
+                        <div class="foreign-count-display mt-1">
+                            <span class="text-muted">当前外援：<strong id="foreign-count">0</strong>/<span id="max-foreign">4</span> 人</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 赞助系统 -->
+            <div class="card mb-2">
+                <div class="card-header">🤝 拉赞助</div>
+                <div class="card-body text-center">
+                    <p class="text-muted mb-2">每<span id="sponsor-cooldown-days">5</span>天可拉一次赞助，获得<span id="sponsor-min">10</span>-<span id="sponsor-max">100</span>万元经费</p>
+                    <!-- <p class="text-muted mb-2" style="font-size: 0.85rem;">💡 50万以上概率低，80万以上概率极低</p> -->
+                    <button class="btn btn-warning btn-lg" id="btn-get-sponsor" onclick="GameApp.getSponsor()">
+                        🤝 拉赞助
+                    </button>
+                    <p class="text-muted mt-1" id="sponsor-status" style="font-size: 0.85rem;"></p>
+                </div>
+            </div>
+
+            <!-- 球探搜索按钮 -->
+            <div class="card mb-2">
+                <div class="card-header">🔍 球探搜索</div>
+                <div class="card-body text-center">
+                    <p class="text-muted mb-2">普通搜索：随机位置，能力值86-96随机</p>
+                    <button class="btn btn-primary btn-lg" id="btn-scout-foreign" onclick="GameApp.scoutForeignPlayer(false)">
+                        🔍 普通搜索 (<span id="scout-cost-btn">20</span> 万元)
+                    </button>
+                    <p class="text-muted mt-1" id="scout-reason" style="font-size: 0.85rem;"></p>
+                    
+                    <hr style="margin: 15px 0; border-color: #ddd;">
+                    
+                    <p class="text-muted mb-2">定向搜索：指定位置，能力值≥88</p>
+                    <div class="targeted-search-row" style="display: flex; justify-content: center; align-items: center; gap: 10px; flex-wrap: wrap;">
+                        <select id="target-position-select" class="form-select" style="width: auto; padding: 8px 12px;">
+                            <option value="PG">PG - 控球后卫</option>
+                            <option value="SG">SG - 得分后卫</option>
+                            <option value="SF">SF - 小前锋</option>
+                            <option value="PF">PF - 大前锋</option>
+                            <option value="C">C - 中锋</option>
+                        </select>
+                        <button class="btn btn-success btn-lg" id="btn-targeted-scout" onclick="GameApp.scoutForeignPlayer(true)">
+                            🎯 定向搜索 (<span id="targeted-scout-cost-btn">50</span> 万元)
+                        </button>
+                    </div>
+                    <p class="text-muted mt-1" id="targeted-scout-reason" style="font-size: 0.85rem;"></p>
+                </div>
+            </div>
+
+            <!-- 搜索到的外援列表容器 -->
+            <div id="scouted-players-container">
+                <!-- 动态生成外援卡片 -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ========== Match 比赛页面 ========== -->
+<div id="match-page" class="hidden">
+    <div class="match-container">
+        <!-- 比赛前状态 -->
+        <div id="pre-match-panel">
+            <div class="card text-center">
+                <div class="card-header">🏀 今日比赛</div>
+                <div class="card-body">
+                    <div class="match-teams" style="padding: 30px 0;">
+                        <div class="match-team">
+                            <div class="match-team-name" id="pre-home-team">--</div>
+                            <div class="text-muted">主场</div>
+                        </div>
+                        <div class="match-vs">VS</div>
+                        <div class="match-team">
+                            <div class="match-team-name" id="pre-away-team">--</div>
+                            <div class="text-muted">客场</div>
+                        </div>
+                    </div>
+                    
+                    <p class="text-muted" style="margin-bottom: 15px;">
+                        点击开始比赛，将通过AI技术模拟比赛并生成球员数据
+                    </p>
+                    
+                    <button class="btn btn-primary btn-lg mt-2" id="btn-start-match" onclick="GameApp.startMatch()">
+                        🏀 开始比赛
+                    </button>
+                </div>
+            </div>
+            
+            <div class="text-center mt-2">
+                <button class="btn btn-secondary" onclick="GameApp.showPage('dashboard')">
+                    ← 返回控制台
+                </button>
+            </div>
+        </div>
+
+        <!-- 模拟中状态 - 带进度条 -->
+        <div id="llm-simulating-panel" class="hidden">
+            <div class="card text-center">
+                <div class="card-body" style="padding: 60px 30px;">
+                    <h3 style="color: var(--primary-color); margin-bottom: 20px;">🏀 比赛模拟中</h3>
+                    
+                    <!-- 进度条 -->
+                    <div class="progress-container" style="max-width: 400px; margin: 0 auto 20px;">
+                        <div class="progress" style="height: 24px; background-color: #e9ecef; border-radius: 12px; overflow: hidden;">
+                            <div id="match-progress-bar" class="progress-bar progress-bar-striped progress-bar-animated" 
+                                 role="progressbar" 
+                                 style="width: 0%; background: linear-gradient(90deg, var(--primary-color), var(--primary-dark)); transition: width 0.5s ease;">
+                            </div>
+                        </div>
+                        <p class="text-muted mt-2" id="match-progress-text" style="font-size: 0.9rem;">准备中...</p>
+                    </div>
+                    
+                    <p class="text-muted" style="font-size: 0.85rem;">正在生成比赛数据，请稍候</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 比赛结果面板 -->
+        <div id="match-result-panel" class="hidden">
+            <!-- 比分板 -->
+            <div class="match-scoreboard">
+                <div class="match-teams">
+                    <div class="match-team">
+                        <div class="match-team-name" id="result-home-team">--</div>
+                        <div class="match-score" id="result-home-score">0</div>
+                    </div>
+                    <div class="match-vs">VS</div>
+                    <div class="match-team">
+                        <div class="match-team-name" id="result-away-team">--</div>
+                        <div class="match-score" id="result-away-score">0</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 数据统计 - 主队 -->
+            <div class="box-score">
+                <div class="box-score-header" id="home-box-score-header">主队数据统计</div>
+                <div class="table-container">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>球员</th>
+                                <th>得分</th>
+                                <th>篮板</th>
+                                <th>助攻</th>
+                                <th>抢断</th>
+                                <th>盖帽</th>
+                                <th>失误</th>
+                                <th>时间</th>
+                            </tr>
+                        </thead>
+                        <tbody id="home-box-score-body">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- 数据统计 - 客队 -->
+            <div class="box-score mt-2">
+                <div class="box-score-header" id="away-box-score-header">客队数据统计</div>
+                <div class="table-container">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>球员</th>
+                                <th>得分</th>
+                                <th>篮板</th>
+                                <th>助攻</th>
+                                <th>抢断</th>
+                                <th>盖帽</th>
+                                <th>失误</th>
+                                <th>时间</th>
+                            </tr>
+                        </thead>
+                        <tbody id="away-box-score-body">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="text-center mt-2">
+                <button class="btn btn-primary btn-lg" onclick="GameApp.continueAfterMatch()">
+                    继续游戏 →
+                </button>
+            </div>
+        </div>
+
+        <!-- 无比赛提示 -->
+        <div id="no-match-panel" class="hidden">
+            <div class="card text-center">
+                <div class="card-body" style="padding: 50px;">
+                    <div style="font-size: 4rem; margin-bottom: 20px;">📅</div>
+                    <h2>今日无比赛</h2>
+                    <p class="text-muted">今天是休息日，可以进行训练或交易</p>
+                    <button class="btn btn-primary mt-2" onclick="GameApp.showPage('dashboard')">
+                        返回控制台
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- ========== Leaderboard 排行榜页面 ========== -->
+<div id="leaderboard-page" class="hidden">
+    <div class="leaderboard-container">
+        <div class="roster-header">
+            <div>
+                <h1>📊 数据排行榜</h1>
+                <!-- <p class="text-muted">查看各项数据的前20名球员</p> -->
+            </div>
+            <div>
+                <button class="btn btn-secondary" onclick="GameApp.showPage('dashboard')">
+                    ← 返回控制台
+                </button>
+            </div>
+        </div>
+
+        <!-- 常规赛/季后赛/总数据/球队战绩切换按钮 -->
+        <div class="card mb-2" id="leaderboard-mode-card">
+            <div class="card-body">
+                <div class="leaderboard-mode-toggle">
+                    <button class="btn btn-mode active" id="btn-regular-mode" onclick="GameApp.switchLeaderboardMode('regular')">
+                        📅 常规赛数据
+                    </button>
+                    <button class="btn btn-mode" id="btn-playoff-mode" onclick="GameApp.switchLeaderboardMode('playoff')">
+                        🏆 季后赛数据
+                    </button>
+                    <button class="btn btn-mode" id="btn-total-mode" onclick="GameApp.switchLeaderboardMode('total')">
+                        📈 总数据
+                    </button>
+                    <button class="btn btn-mode" id="btn-team-standings-mode" onclick="GameApp.switchLeaderboardMode('team-standings')">
+                        🏅 球队战绩榜
+                    </button>
+                </div>
+                <!-- 球员类型筛选按钮 -->
+                <div class="leaderboard-player-filter" id="leaderboard-player-filter" style="margin-top: 10px;">
+                    <button class="btn btn-filter active" id="btn-all-players" onclick="GameApp.switchPlayerFilter('all')">
+                        👥 所有球员
+                    </button>
+                    <button class="btn btn-filter" id="btn-domestic-players" onclick="GameApp.switchPlayerFilter('domestic')">
+                        🇨🇳 本土球员
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 数据类型选择 -->
+        <div class="leaderboard-tabs" id="leaderboard-tabs">
+            <button class="leaderboard-tab active" data-stat="points" onclick="GameApp.switchLeaderboard('points')">
+                🏀 得分榜
+            </button>
+            <button class="leaderboard-tab" data-stat="rebounds" onclick="GameApp.switchLeaderboard('rebounds')">
+                📊 篮板榜
+            </button>
+            <button class="leaderboard-tab" data-stat="assists" onclick="GameApp.switchLeaderboard('assists')">
+                🎯 助攻榜
+            </button>
+            <button class="leaderboard-tab" data-stat="steals" onclick="GameApp.switchLeaderboard('steals')">
+                ✋ 抢断榜
+            </button>
+            <button class="leaderboard-tab" data-stat="blocks" onclick="GameApp.switchLeaderboard('blocks')">
+                🖐️ 盖帽榜
+            </button>
+        </div>
+
+        <!-- 筛选条件 -->
+        <div class="card mb-2" id="leaderboard-filters-card">
+            <div class="card-body">
+                <div class="grid grid-2" style="max-width: 500px;">
+                    <div class="form-group" style="margin-bottom: 0;" id="min-games-group">
+                        <label class="form-label">最少出场次数</label>
+                        <select class="form-control form-select" id="min-games-select" onchange="GameApp.refreshLeaderboard()">
+                            <option value="1">1场</option>
+                            <option value="3">3场</option>
+                            <option value="5" selected>5场</option>
+                            <option value="10">10场</option>
+                            <option value="15">15场</option>
+                        </select>
+                    </div>
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label class="form-label">显示人数</label>
+                        <select class="form-control form-select" id="top-n-select" onchange="GameApp.refreshLeaderboard()">
+                            <option value="10">前10名</option>
+                            <option value="20" selected>前20名</option>
+                            <option value="50">前50名</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 排行榜表格 (球员数据) -->
+        <div class="card" id="player-leaderboard-card">
+            <div class="card-header" id="leaderboard-title">🏀 得分榜</div>
+            <div class="card-body">
+                <div class="table-container">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th style="width: 60px;">排名</th>
+                                <th>球员</th>
+                                <th>球队</th>
+                                <th>场次</th>
+                                <th id="stat-column-header">场均得分</th>
+                            </tr>
+                        </thead>
+                        <tbody id="leaderboard-body">
+                        </tbody>
+                    </table>
+                </div>
+                <div id="no-leaderboard-data" class="text-center text-muted hidden" style="padding: 40px;">
+                    暂无数据，请等待比赛进行后查看
+                </div>
+            </div>
+        </div>
+
+        <!-- 球队战绩排行榜表格 -->
+        <div class="card hidden" id="team-standings-leaderboard-card">
+            <div class="card-header">🏅 球队战绩榜</div>
+            <div class="card-body">
+                <div class="table-container">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th style="width: 60px;">排名</th>
+                                <th>球队</th>
+                                <th>胜</th>
+                                <th>负</th>
+                                <th>胜率</th>
+                                <th>落后</th>
+                            </tr>
+                        </thead>
+                        <tbody id="team-standings-leaderboard-body">
+                        </tbody>
+                    </table>
+                </div>
+                <div id="no-team-standings-data" class="text-center text-muted hidden" style="padding: 40px;">
+                    暂无数据，请等待比赛进行后查看
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ========== Daily Games 当日比赛页面 ========== -->
+<div id="daily-games-page" class="hidden">
+    <div class="daily-games-container">
+        <div class="daily-games-header">
+            <div>
+                <h1>📺 当日比赛</h1>
+                <p class="text-muted">查看所有比赛和详细统计</p>
+            </div>
+            <div>
+                <button class="btn btn-secondary" onclick="GameApp.showPage('dashboard')">
+                    ← 返回控制台
+                </button>
+            </div>
+        </div>
+
+        <!-- 日期选择 -->
+        <div class="card mb-2">
+            <div class="card-body">
+                <div class="date-picker">
+                    <button class="btn btn-sm btn-outline" onclick="GameApp.changeDailyGamesDate(-1)">
+                        ← 前一天
+                    </button>
+                    <input type="date" class="form-control" id="daily-games-date" 
+                           style="max-width: 200px;" onchange="GameApp.loadDailyGames()">
+                    <button class="btn btn-sm btn-outline" onclick="GameApp.changeDailyGamesDate(1)">
+                        后一天 →
+                    </button>
+                    <button class="btn btn-sm btn-primary" onclick="GameApp.loadDailyGamesToday()">
+                        今天
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 比赛统计摘要 -->
+        <div class="card mb-2" id="daily-games-summary">
+            <div class="card-body">
+                <div class="daily-summary-stats">
+                    <div class="summary-stat">
+                        <span class="summary-value" id="total-games-count">0</span>
+                        <span class="summary-label">场比赛</span>
+                    </div>
+                    <div class="summary-stat">
+                        <span class="summary-value" id="played-games-count">0</span>
+                        <span class="summary-label">已完成</span>
+                    </div>
+                    <div class="summary-stat">
+                        <span class="summary-value" id="scheduled-games-count">0</span>
+                        <span class="summary-label">未开始</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 比赛列表 -->
+        <div id="daily-games-list">
+        </div>
+
+        <!-- 无比赛提示 -->
+        <div id="no-daily-games" class="card hidden">
+            <div class="card-body text-center" style="padding: 50px;">
+                <div style="font-size: 3rem; margin-bottom: 15px;">📅</div>
+                <h3>今日无比赛</h3>
+                <p class="text-muted">选择其他日期查看比赛</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+/* ============================================
+   排行榜模式切换按钮样式
+   ============================================ */
+.leaderboard-mode-toggle,
+.roster-mode-toggle {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+}
+
+.btn-mode {
+    padding: 10px 24px;
+    border: 2px solid var(--primary-color);
+    background: transparent;
+    color: var(--primary-color);
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-mode:hover {
+    background: var(--primary-color);
+    color: white;
+}
+
+.btn-mode.active {
+    background: var(--primary-color);
+    color: white;
+}
+
+/* 球员类型筛选按钮样式 */
+.leaderboard-player-filter {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+}
+
+.btn-filter {
+    padding: 6px 16px;
+    border: 1px solid var(--border-color);
+    background: transparent;
+    color: var(--text-secondary);
+    border-radius: 20px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-filter:hover {
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+}
+
+.btn-filter.active {
+    background: var(--primary-color);
+    border-color: var(--primary-color);
+    color: white;
+}
+
+/* ============================================
+   外援市场样式
+   ============================================ */
+.foreign-market-info {
+    text-align: center;
+    padding: 10px 0;
+}
+
+.budget-display {
+    font-size: 1.5rem;
+    margin-bottom: 10px;
+}
+
+.budget-label {
+    color: var(--text-secondary);
+}
+
+.budget-value {
+    font-weight: 700;
+    color: var(--success-color);
+    font-size: 2rem;
+}
+
+.budget-unit {
+    color: var(--text-secondary);
+}
+
+.scouted-player-info {
+    padding: 15px;
+}
+
+.scouted-player-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.scouted-player-name {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--primary-color);
+}
+
+.scouted-player-overall {
+    font-size: 2rem;
+    font-weight: 800;
+    color: var(--success-color);
+    background: rgba(40, 167, 69, 0.1);
+    padding: 8px 16px;
+    border-radius: 12px;
+}
+
+.scouted-player-basic {
+    color: var(--text-secondary);
+    font-size: 1rem;
+}
+
+.remaining-days-badge {
+    font-weight: 700;
+    color: #28a745;
+}
+
+.remaining-days-badge.warning {
+    color: #ffc107;
+}
+
+.remaining-days-badge.danger {
+    color: #dc3545;
+}
+
+.scouted-player-tags {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.scouted-player-tags .tag {
+    background: var(--primary-color);
+    color: white;
+    padding: 4px 12px;
+    border-radius: 15px;
+    font-size: 0.85rem;
+}
+
+.scouted-player-attrs {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    background: var(--background-color);
+    padding: 15px;
+    border-radius: 8px;
+}
+
+.attr-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 5px 10px;
+    background: white;
+    border-radius: 4px;
+}
+
+.attr-label {
+    color: var(--text-secondary);
+}
+
+.attr-value {
+    font-weight: 600;
+    color: var(--primary-color);
+}
+
+.scouted-player-career,
+.scouted-player-report {
+    background: var(--background-color);
+    padding: 15px;
+    border-radius: 8px;
+}
+
+/* 定向搜索下拉框样式 */
+.form-select {
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
+    font-size: 1rem;
+    background-color: white;
+    cursor: pointer;
+    transition: border-color 0.2s;
+}
+
+.form-select:hover {
+    border-color: var(--primary-color);
+}
+
+.form-select:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+}
+
+.targeted-search-row {
+    margin-top: 10px;
+}
+
+/* 未知能力值样式 */
+.attr-value {
+    font-weight: 600;
+    color: var(--primary-color);
+}
+
+.attr-value:contains('??') {
+    color: #999;
+    font-style: italic;
+}
+
+.career-title,
+.report-title {
+    font-weight: 600;
+    color: var(--primary-color);
+    margin-bottom: 8px;
+}
+
+.career-content,
+.report-content {
+    color: var(--text-primary);
+    line-height: 1.6;
+}
+
+.scouted-player-actions {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+}
+
+/* ============================================
+   每日比赛页面增强样式
+   ============================================ */
+
+/* 统计摘要样式 */
+.daily-summary-stats {
+    display: flex;
+    justify-content: center;
+    gap: 50px;
+    padding: 10px 0;
+}
+
+.summary-stat {
+    text-align: center;
+    position: relative;
+}
+
+.summary-stat:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    right: -25px;
+    top: 50%;
+    transform: translateY(-50%);
+    height: 40px;
+    width: 1px;
+    background: var(--border-color);
+}
+
+.summary-value {
+    display: block;
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--primary-color);
+    line-height: 1.2;
+}
+
+.summary-label {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin-top: 4px;
+}
+
+/* 比赛卡片增强样式 */
+.game-card-enhanced {
+    background: var(--card-background);
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    margin-bottom: 20px;
+    overflow: hidden;
+    transition: all 0.3s ease;
+    border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.game-card-enhanced:hover {
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+    transform: translateY(-2px);
+}
+
+.game-card-header-enhanced {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 24px 28px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    background: linear-gradient(135deg, rgba(29, 53, 87, 0.02), rgba(69, 123, 157, 0.02));
+    border-bottom: 1px solid transparent;
+}
+
+.game-card-header-enhanced:hover {
+    background: linear-gradient(135deg, rgba(29, 53, 87, 0.06), rgba(69, 123, 157, 0.06));
+}
+
+.game-matchup {
+    display: flex;
+    align-items: center;
+    gap: 30px;
+    flex: 1;
+    justify-content: center;
+}
+
+.game-team-block {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 160px;
+    padding: 8px 16px;
+    border-radius: 8px;
+    transition: background-color 0.2s;
+}
+
+.game-team-block:hover {
+    background: rgba(0, 0, 0, 0.02);
+}
+
+.game-team-name-enhanced {
+    font-weight: 600;
+    font-size: 1.15rem;
+    color: var(--text-primary);
+    margin-bottom: 8px;
+    text-align: center;
+}
+
+.game-team-score {
+    font-size: 2.5rem;
+    font-weight: 800;
+    color: var(--secondary-color);
+    line-height: 1;
+    transition: color 0.2s;
+}
+
+.game-team-score.winner {
+    color: var(--success-color);
+    text-shadow: 0 2px 4px rgba(40, 167, 69, 0.2);
+}
+
+.game-vs-divider {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0 20px;
+}
+
+.vs-text-enhanced {
+    font-size: 1.1rem;
+    color: var(--text-secondary);
+    font-weight: 600;
+    background: var(--background-color);
+    padding: 8px 16px;
+    border-radius: 20px;
+    border: 1px solid var(--border-color);
+}
+
+.game-status-badge {
+    padding: 8px 18px;
+    border-radius: 25px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.game-status-badge.status-finished {
+    background: linear-gradient(135deg, var(--success-color), #1e7e34);
+    color: white;
+}
+
+.game-status-badge.status-scheduled {
+    background: linear-gradient(135deg, var(--text-secondary), #5a6268);
+    color: white;
+}
+
+.expand-icon {
+    margin-left: 12px;
+    transition: transform 0.3s ease;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+.expand-icon.expanded {
+    transform: rotate(180deg);
+}
+
+/* 比赛详情增强样式 */
+.game-details-enhanced {
+    padding: 0;
+    border-top: 1px solid var(--border-color);
+    background: linear-gradient(180deg, var(--background-color), #ffffff);
+    display: none;
+    animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.game-details-enhanced.expanded {
+    display: block;
+}
+
+.team-stats-section {
+    padding: 24px 28px;
+}
+
+.team-stats-section:first-child {
+    border-bottom: 2px solid var(--border-color);
+    background: rgba(29, 53, 87, 0.02);
+}
+
+.team-stats-section:last-child {
+    background: rgba(69, 123, 157, 0.02);
+}
+
+.team-stats-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 18px;
+    padding-bottom: 12px;
+    border-bottom: 3px solid var(--primary-color);
+}
+
+.team-stats-title {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--secondary-color);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.team-total-score {
+    font-size: 1.3rem;
+    font-weight: 800;
+    color: var(--primary-color);
+    background: linear-gradient(135deg, rgba(230, 57, 70, 0.15), rgba(230, 57, 70, 0.05));
+    padding: 6px 16px;
+    border-radius: 25px;
+    border: 2px solid rgba(230, 57, 70, 0.2);
+}
+
+/* 球员统计表格增强样式 */
+.player-stats-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 0.9rem;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.player-stats-table thead {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+
+.player-stats-table th {
+    background: linear-gradient(135deg, var(--secondary-color), #2a4a6e);
+    color: white;
+    padding: 14px 12px;
+    text-align: center;
+    font-weight: 600;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    border-bottom: 2px solid var(--primary-color);
+}
+
+.player-stats-table th:first-child {
+    text-align: left;
+    padding-left: 18px;
+    border-radius: 8px 0 0 0;
+}
+
+.player-stats-table th:last-child {
+    border-radius: 0 8px 0 0;
+}
+
+.player-stats-table td {
+    padding: 12px;
+    text-align: center;
+    border-bottom: 1px solid var(--border-color);
+    transition: background-color 0.15s ease;
+}
+
+.player-stats-table td:first-child {
+    text-align: left;
+    padding-left: 18px;
+    font-weight: 600;
+    color: var(--secondary-color);
+}
+
+.player-stats-table tbody tr:nth-child(odd) {
+    background: #ffffff;
+}
+
+.player-stats-table tbody tr:nth-child(even) {
+    background: rgba(69, 123, 157, 0.05);
+}
+
+.player-stats-table tbody tr:hover {
+    background: rgba(230, 57, 70, 0.08);
+}
+
+.player-stats-table tbody tr:last-child td:first-child {
+    border-radius: 0 0 0 8px;
+}
+
+.player-stats-table tbody tr:last-child td:last-child {
+    border-radius: 0 0 8px 0;
+}
+
+/* 高亮数据样式 */
+.stat-highlight {
+    font-weight: 700;
+    color: var(--primary-color);
+}
+
+.stat-highlight.points-20plus {
+    background: linear-gradient(135deg, rgba(230, 57, 70, 0.2), rgba(230, 57, 70, 0.08));
+    padding: 4px 10px;
+    border-radius: 6px;
+    display: inline-block;
+    min-width: 36px;
+    box-shadow: 0 1px 3px rgba(230, 57, 70, 0.2);
+    animation: pulseHighlight 2s ease-in-out infinite;
+}
+
+@keyframes pulseHighlight {
+    0%, 100% {
+        box-shadow: 0 1px 3px rgba(230, 57, 70, 0.2);
+    }
+    50% {
+        box-shadow: 0 2px 8px rgba(230, 57, 70, 0.35);
+    }
+}
+
+.stat-highlight.double-digit {
+    color: var(--accent-color);
+    font-weight: 700;
+    background: rgba(69, 123, 157, 0.12);
+    padding: 3px 8px;
+    border-radius: 4px;
+    display: inline-block;
+}
+
+.stat-highlight.points-30plus {
+    background: linear-gradient(135deg, rgba(255, 193, 7, 0.3), rgba(230, 57, 70, 0.2));
+    padding: 4px 10px;
+    border-radius: 6px;
+    display: inline-block;
+    min-width: 36px;
+    box-shadow: 0 2px 6px rgba(255, 193, 7, 0.3);
+    color: #c41e3a;
+    font-weight: 800;
+}
+
+.stat-highlight.defensive-highlight {
+    color: var(--success-color);
+    font-weight: 600;
+    background: rgba(40, 167, 69, 0.1);
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+
+/* 无数据提示样式 */
+.no-stats-message {
+    text-align: center;
+    padding: 50px 30px;
+    color: var(--text-secondary);
+    background: linear-gradient(135deg, rgba(108, 117, 125, 0.05), rgba(108, 117, 125, 0.02));
+    border-radius: 12px;
+    margin: 10px;
+}
+
+.no-stats-message-icon {
+    font-size: 3rem;
+    margin-bottom: 15px;
+    opacity: 0.6;
+}
+
+.no-stats-message-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 8px;
+}
+
+.no-stats-message-text {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    font-style: italic;
+}
+
+.game-not-started-message {
+    text-align: center;
+    padding: 40px 30px;
+    background: linear-gradient(135deg, rgba(69, 123, 157, 0.08), rgba(69, 123, 157, 0.02));
+    border-radius: 12px;
+    margin: 15px;
+    border: 1px dashed var(--accent-color);
+}
+
+.game-not-started-message .icon {
+    font-size: 2.5rem;
+    margin-bottom: 12px;
+}
+
+.game-not-started-message .title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--secondary-color);
+    margin-bottom: 6px;
+}
+
+.game-not-started-message .subtitle {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+    .daily-summary-stats {
+        gap: 25px;
+        flex-wrap: wrap;
+    }
+    
+    .summary-stat:not(:last-child)::after {
+        display: none;
+    }
+    
+    .summary-value {
+        font-size: 1.6rem;
+    }
+    
+    .game-card-header-enhanced {
+        padding: 18px 16px;
+        flex-direction: column;
+        gap: 15px;
+    }
+    
+    .game-matchup {
+        flex-direction: column;
+        gap: 15px;
+    }
+    
+    .game-team-block {
+        min-width: auto;
+        width: 100%;
+    }
+    
+    .game-team-score {
+        font-size: 2rem;
+    }
+    
+    .game-vs-divider {
+        padding: 8px 0;
+    }
+    
+    .team-stats-section {
+        padding: 18px 14px;
+    }
+    
+    .player-stats-table {
+        font-size: 0.8rem;
+    }
+    
+    .player-stats-table th,
+    .player-stats-table td {
+        padding: 10px 6px;
+    }
+    
+    .player-stats-table th:first-child,
+    .player-stats-table td:first-child {
+        padding-left: 10px;
+    }
+    
+    .no-stats-message {
+        padding: 35px 20px;
+    }
+}
+
+@media (max-width: 480px) {
+    .game-team-name-enhanced {
+        font-size: 1rem;
+    }
+    
+    .game-team-score {
+        font-size: 1.8rem;
+    }
+    
+    .team-stats-header {
+        flex-direction: column;
+        gap: 10px;
+        align-items: flex-start;
+    }
+    
+    .player-stats-table th,
+    .player-stats-table td {
+        padding: 8px 4px;
+        font-size: 0.75rem;
+    }
+}
+
+/* ============================================
+   被裁球员样式
+   ============================================ */
+.waived-player {
+    opacity: 0.6;
+    background-color: #f8f8f8;
+}
+
+.waived-badge {
+    background: #dc3545;
+    color: white;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    margin-left: 6px;
+    font-weight: 600;
+}
+
+.waived-status {
+    color: #dc3545;
+    font-weight: 600;
+}
+
+.foreign-badge {
+    background: #17a2b8;
+    color: white;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    margin-left: 6px;
+    font-weight: 600;
+}
+
+.injured-badge {
+    background: #ffc107;
+    color: #212529;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+</style>
+
+<!-- ========== Schedule 赛程页面 ========== -->
+<div id="schedule-page" class="hidden">
+    <div class="schedule-container">
+        <div class="roster-header">
+            <div>
+                <h1>📅 赛程表</h1>
+                <p class="text-muted">查看球队完整赛程</p>
+            </div>
+            <div>
+                <button class="btn btn-secondary" onclick="GameApp.showPage('dashboard')">
+                    ← 返回控制台
+                </button>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">📅 我的球队赛程</div>
+            <div class="card-body">
+                <div id="schedule-list">
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 关于游戏模态框内容 -->
+<div id="about-content" class="hidden">
+    <div class="card">
+        <div class="card-header">关于华夏篮球联赛模拟器</div>
+        <div class="card-body">
+            <p><strong>版本:</strong> 1.0.0</p>
+            <p class="mt-1"><strong>简介:</strong></p>
+            <p>华夏篮球联赛模拟器是一款使用AI技术驱动的篮球经理游戏。你将带领球队征战整个赛季。</p>
+            <p class="mt-1"><strong>游戏特色:</strong></p>
+            <ul style="margin-left: 20px; margin-top: 10px;">
+                <li>可自定义的球队和球员阵容</li>
+                <li>更真实的AI驱动比赛模拟</li>
+                <li>完整的赛季管理系统</li>
+                <li>球员训练和交易系统</li>
+                <li>详细的数据统计和排行榜</li>
+            </ul>
+            <p class="mt-2"><strong>操作提示:</strong></p>
+            <ul style="margin-left: 20px; margin-top: 10px;">
+                <li>比赛日可以进行比赛模拟</li>
+                <li>非比赛日可以进行球员训练</li>
+                <li>随时可以进行球员交易</li>
+                <li>记得定期保存游戏进度</li>
+            </ul>
+        </div>
+    </div>
+</div>
+{% endblock %}

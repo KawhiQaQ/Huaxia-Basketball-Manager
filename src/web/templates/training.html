@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+
+{% block title %}华夏篮球联赛教练模拟器 - 球员训练{% endblock %}
+
+{% block content %}
+<div class="training-container">
+    <div class="roster-header">
+        <div>
+            <h1>🏋️ 球员训练</h1>
+            <p class="text-muted">选择训练项目提升球员能力（每次获得0~2训练点数）</p>
+        </div>
+        <div>
+            <button class="btn btn-secondary" onclick="GameApp.showPage('dashboard')">
+                ← 返回控制台
+            </button>
+        </div>
+    </div>
+
+    <!-- 训练日提示 -->
+    <div class="card mb-2" id="training-status-card">
+        <div class="card-body text-center">
+            <div id="training-status">
+                <!-- 动态显示训练状态 -->
+            </div>
+        </div>
+    </div>
+
+    <!-- 训练进度说明 -->
+    <div class="card mb-2">
+        <div class="card-header">📊 训练进度系统</div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-6">
+                    <p class="mb-1"><strong>单项属性提升:</strong></p>
+                    <p class="text-muted mb-0">累积 <span class="text-warning">20</span> 训练点数 → 该属性 +1</p>
+                </div>
+                <div class="col-6">
+                    <p class="mb-1"><strong>总评提升:</strong></p>
+                    <p class="text-muted mb-0">累积 <span class="text-warning">5</span> 次属性+1 → 总评 +1</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 球队训练进度总览 -->
+    <div class="card mb-2">
+        <div class="card-header">
+            📈 球队训练进度
+            <button class="btn btn-sm btn-outline-primary" style="float: right;" onclick="GameApp.loadTeamTrainingProgress()">
+                🔄 刷新
+            </button>
+        </div>
+        <div class="card-body" id="team-training-progress">
+            <div class="text-center text-muted">加载中...</div>
+        </div>
+    </div>
+
+    <!-- 训练次数限制提示 -->
+    <div class="card mb-2" id="training-limit-card">
+        <div class="card-header">⏰ 今日训练次数</div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-6 text-center">
+                    <div class="h4 mb-0" id="team-training-remaining">-</div>
+                    <small class="text-muted">全队训练剩余次数</small>
+                </div>
+                <div class="col-6 text-center">
+                    <div class="h4 mb-0" id="individual-training-info">-</div>
+                    <small class="text-muted">每人单独训练上限</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 训练项目选择 -->
+    <div class="card mb-2">
+        <div class="card-header">📋 选择训练项目</div>
+        <div class="card-body">
+            <div class="training-programs" id="training-programs">
+                <!-- 动态加载训练项目 -->
+            </div>
+        </div>
+    </div>
+
+    <!-- 球员选择 -->
+    <div class="card mb-2">
+        <div class="card-header">
+            👤 选择训练球员
+            <span class="text-muted" style="font-weight: normal; font-size: 0.9rem;">
+                (不选择则训练全队)
+            </span>
+        </div>
+        <div class="card-body">
+            <div class="form-group">
+                <select class="form-control form-select" id="training-player-select">
+                    <option value="">全队训练</option>
+                    <!-- 动态加载球员列表 -->
+                </select>
+            </div>
+            <div id="player-training-remaining" class="mt-2 text-muted" style="display: none;">
+                该球员今日剩余单独训练次数: <span id="player-remaining-count">2</span>
+            </div>
+            <!-- 选中球员的训练进度详情 -->
+            <div id="selected-player-progress" class="mt-2" style="display: none;">
+                <!-- 动态显示选中球员的训练进度 -->
+            </div>
+        </div>
+    </div>
+
+    <!-- 执行训练按钮 -->
+    <div class="text-center">
+        <button class="btn btn-primary btn-lg" id="btn-execute-training" onclick="GameApp.executeTraining()" disabled>
+            🏃 开始训练
+        </button>
+    </div>
+
+    <!-- 训练结果 -->
+    <div class="card mt-2 hidden" id="training-result-card">
+        <div class="card-header">📈 训练结果</div>
+        <div class="card-body" id="training-result">
+            <!-- 动态显示训练结果 -->
+        </div>
+    </div>
+</div>
+
+<!-- 训练项目卡片模板 -->
+<script id="training-card-template" type="text/template">
+    <div class="training-card" data-program="${name}" onclick="GameApp.selectTrainingProgram('${name}')">
+        <div class="training-name">${display_name}</div>
+        <div class="training-attribute">提升属性: ${target_attribute}</div>
+        <div class="training-boost">训练点数 +${boost_min} ~ +${boost_max}</div>
+    </div>
+</script>
+{% endblock %}

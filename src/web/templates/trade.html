@@ -1,0 +1,227 @@
+{% extends "base.html" %}
+
+{% block title %}华夏篮球联赛教练模拟器 - 交易中心{% endblock %}
+
+{% block content %}
+<div class="trade-page-container">
+    <div class="roster-header">
+        <div>
+            <h1>🔄 交易中心</h1>
+            <p class="text-muted">进行球员交易或搜索外援</p>
+        </div>
+        <div>
+            <button class="btn btn-secondary" onclick="GameApp.showPage('dashboard')">
+                ← 返回控制台
+            </button>
+        </div>
+    </div>
+
+    <!-- 交易类型选择 -->
+    <div class="leaderboard-tabs mb-2">
+        <button class="leaderboard-tab active" data-tab="trade" onclick="GameApp.switchTradeTab('trade')">
+            🔄 球员交易
+        </button>
+        <button class="leaderboard-tab" data-tab="foreign-market" onclick="GameApp.switchTradeTab('foreign-market')">
+            🌍 外援市场
+        </button>
+    </div>
+
+    <!-- 球员交易面板 -->
+    <div id="trade-panel">
+        <div class="trade-container">
+            <!-- 我方球员 -->
+            <div class="trade-panel">
+                <div class="trade-panel-title">我方球员 (选择要交易出去的球员)</div>
+                <div id="my-players-list">
+                    <!-- 动态加载 -->
+                </div>
+            </div>
+
+            <!-- 交易箭头 -->
+            <div class="trade-arrow">⇄</div>
+
+            <!-- 对方球员 -->
+            <div class="trade-panel">
+                <div class="trade-panel-title">
+                    <select class="form-control form-select" id="trade-team-select" onchange="GameApp.loadTradeTeamRoster()">
+                        <option value="">选择交易对象球队</option>
+                        <!-- 动态加载球队列表 -->
+                    </select>
+                </div>
+                <div id="other-players-list" class="mt-1">
+                    <!-- 动态加载 -->
+                </div>
+            </div>
+        </div>
+
+        <!-- 交易确认 -->
+        <div class="text-center mt-2">
+            <button class="btn btn-primary btn-lg" id="btn-propose-trade" onclick="GameApp.proposeTrade()" disabled>
+                📤 发起交易
+            </button>
+        </div>
+
+        <!-- 交易结果展示区域 -->
+        <div id="trade-result-panel" class="trade-result-panel hidden">
+            <div class="trade-result-header">
+                <span class="trade-result-icon" id="trade-result-icon">📋</span>
+                <span class="trade-result-title" id="trade-result-title">交易结果</span>
+            </div>
+            <div class="trade-result-content" id="trade-result-content">
+                <!-- 交易结果消息将显示在这里 -->
+            </div>
+            <button class="btn btn-secondary btn-sm trade-result-close" onclick="GameApp.closeTradeResult()">
+                关闭
+            </button>
+        </div>
+    </div>
+
+    <!-- 外援市场面板 -->
+    <div id="foreign-market-panel" class="hidden">
+        <!-- 经费和搜索信息 -->
+        <div class="card mb-2">
+            <div class="card-header">💰 球队经费</div>
+            <div class="card-body">
+                <div class="foreign-market-info">
+                    <div class="budget-display">
+                        <span class="budget-label">当前经费：</span>
+                        <span class="budget-value" id="team-budget">0</span>
+                        <span class="budget-unit">万元</span>
+                    </div>
+                    <div class="scout-cost-display">
+                        <span class="text-muted">普通搜索：<strong id="scout-cost">20</strong> 万元 | 定向搜索：<strong id="targeted-scout-cost">50</strong> 万元</span>
+                    </div>
+                    <div class="foreign-count-display mt-1">
+                        <span class="text-muted">当前外援：<strong id="foreign-count">0</strong>/<span id="max-foreign">4</span> 人</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 赞助系统 -->
+        <div class="card mb-2">
+            <div class="card-header">🤝 拉赞助</div>
+            <div class="card-body text-center">
+                <p class="text-muted mb-2">每<span id="sponsor-cooldown-days">5</span>天可拉一次赞助，获得<span id="sponsor-min">10</span>-<span id="sponsor-max">100</span>万元经费</p>
+                <p class="text-muted mb-2" style="font-size: 0.85rem;">💡 50万以上概率低，80万以上概率极低</p>
+                <button class="btn btn-warning btn-lg" id="btn-get-sponsor" onclick="GameApp.getSponsor()">
+                    🤝 拉赞助
+                </button>
+                <p class="text-muted mt-1" id="sponsor-status" style="font-size: 0.85rem;"></p>
+            </div>
+        </div>
+
+        <!-- 球探搜索按钮 -->
+        <div class="card mb-2">
+            <div class="card-header">🔍 球探搜索</div>
+            <div class="card-body text-center">
+                <p class="text-muted mb-2">普通搜索：随机位置，能力值86-97随机</p>
+                <button class="btn btn-primary btn-lg" id="btn-scout-foreign" onclick="GameApp.scoutForeignPlayer(false)">
+                    🔍 普通搜索 (<span id="scout-cost-btn">20</span> 万元)
+                </button>
+                <p class="text-muted mt-1" id="scout-reason" style="font-size: 0.85rem;"></p>
+                
+                <hr style="margin: 15px 0; border-color: #ddd;">
+                
+                <p class="text-muted mb-2">定向搜索：指定位置，能力值≥88</p>
+                <div class="targeted-search-row" style="display: flex; justify-content: center; align-items: center; gap: 10px; flex-wrap: wrap;">
+                    <select id="target-position-select" class="form-select" style="width: auto; padding: 8px 12px;">
+                        <option value="PG">PG - 控球后卫</option>
+                        <option value="SG">SG - 得分后卫</option>
+                        <option value="SF">SF - 小前锋</option>
+                        <option value="PF">PF - 大前锋</option>
+                        <option value="C">C - 中锋</option>
+                    </select>
+                    <button class="btn btn-success btn-lg" id="btn-targeted-scout" onclick="GameApp.scoutForeignPlayer(true)">
+                        🎯 定向搜索 (<span id="targeted-scout-cost-btn">50</span> 万元)
+                    </button>
+                </div>
+                <p class="text-muted mt-1" id="targeted-scout-reason" style="font-size: 0.85rem;"></p>
+            </div>
+        </div>
+
+        <!-- 搜索到的外援 -->
+        <div class="card mb-2" id="scouted-player-card" style="display: none;">
+            <div class="card-header">⭐ 搜索到的外援 <span id="search-type-badge" class="badge" style="margin-left: 8px;"></span></div>
+            <div class="card-body">
+                <div class="scouted-player-info">
+                    <div class="scouted-player-header">
+                        <div class="scouted-player-name" id="scouted-player-name">--</div>
+                        <div class="scouted-player-overall" id="scouted-player-overall">??</div>
+                    </div>
+                    <div class="scouted-player-basic">
+                        <span id="scouted-player-position">--</span> | 
+                        <span id="scouted-player-age">--</span>岁 |
+                        💰 工资：<span id="scouted-player-salary">--</span>万元
+                    </div>
+                    <div class="scouted-player-tags mt-1" id="scouted-player-tags"></div>
+                    
+                    <!-- 能力值（部分隐藏） -->
+                    <div class="scouted-player-attrs mt-2">
+                        <div class="attr-row">
+                            <span class="attr-label">进攻</span>
+                            <span class="attr-value" id="scouted-attr-offense">??</span>
+                        </div>
+                        <div class="attr-row">
+                            <span class="attr-label">防守</span>
+                            <span class="attr-value" id="scouted-attr-defense">??</span>
+                        </div>
+                        <div class="attr-row">
+                            <span class="attr-label">三分</span>
+                            <span class="attr-value" id="scouted-attr-three">??</span>
+                        </div>
+                        <div class="attr-row">
+                            <span class="attr-label">篮板</span>
+                            <span class="attr-value" id="scouted-attr-rebound">??</span>
+                        </div>
+                        <div class="attr-row">
+                            <span class="attr-label">传球</span>
+                            <span class="attr-value" id="scouted-attr-passing">??</span>
+                        </div>
+                        <div class="attr-row">
+                            <span class="attr-label">体力</span>
+                            <span class="attr-value" id="scouted-attr-stamina">??</span>
+                        </div>
+                    </div>
+                    <p class="text-muted mt-1" style="font-size: 0.8rem;">💡 只有3项能力值已知，其他为未知。总评在签约后揭晓。</p>
+                    
+                    <!-- 过往经历 -->
+                    <div class="scouted-player-career mt-2">
+                        <div class="career-title">📜 过往经历</div>
+                        <div class="career-content" id="scouted-player-career">--</div>
+                    </div>
+                    
+                    <!-- 球探报告 -->
+                    <div class="scouted-player-report mt-2">
+                        <div class="report-title">📋 球探报告</div>
+                        <div class="report-content" id="scouted-player-report">--</div>
+                    </div>
+                </div>
+                
+                <!-- 操作按钮 -->
+                <div class="scouted-player-actions mt-2">
+                    <button class="btn btn-success btn-lg" onclick="GameApp.signScoutedPlayer()">
+                        ✅ 签约 (支付 <span id="sign-salary-cost">--</span> 万元)
+                    </button>
+                    <button class="btn btn-secondary btn-lg" onclick="GameApp.dismissScoutedPlayer()">
+                        ❌ 放弃
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 交易球员卡片模板 -->
+<script id="trade-player-template" type="text/template">
+    <div class="trade-player" data-player-id="${id}" onclick="GameApp.toggleTradePlayer('${side}', '${id}')">
+        <div>
+            <div class="player-name">${name}</div>
+            <div class="text-muted" style="font-size: 0.85rem;">
+                ${position} | ${age}岁 | 总评 ${overall}
+            </div>
+        </div>
+        <div class="player-overall">${overall}</div>
+    </div>
+</script>
+{% endblock %}

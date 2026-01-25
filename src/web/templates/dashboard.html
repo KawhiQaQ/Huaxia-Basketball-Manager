@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+
+{% block title %}华夏篮球联赛教练模拟器 - 控制台{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+    <!-- 顶部信息栏 -->
+    <div class="dashboard-header">
+        <div>
+            <div class="dashboard-date" id="current-date">加载中...</div>
+            <div class="text-muted" id="day-type">--</div>
+            <!-- 比赛日/训练日状态显示 (Requirements 5.1, 7.1) -->
+            <div class="day-status-badge" id="day-status-badge" style="display: none;">
+                <span id="day-status-text"></span>
+            </div>
+        </div>
+        <div class="dashboard-actions">
+            <button class="btn btn-secondary" onclick="GameApp.saveGame()">
+                💾 保存游戏
+            </button>
+            <!-- 动态显示 "前往比赛" 或 "推进日期" 按钮 (Requirements 5.1, 7.1) -->
+            <button class="btn btn-primary" id="btn-go-to-match" onclick="GameApp.goToMatch()" style="display: none;">
+                🏀 前往比赛
+            </button>
+            <button class="btn btn-primary" id="btn-advance-day" onclick="GameApp.advanceDay()">
+                ⏭️ 推进日期
+            </button>
+            <!-- 季后赛入口按钮 (Requirements 1.1, 1.2, 1.3) -->
+            <button class="btn btn-success" id="btn-enter-playoffs" onclick="GameApp.enterPlayoffs()" style="display: none;">
+                🏆 前往季后赛
+            </button>
+        </div>
+    </div>
+
+    <!-- 球队状态卡片 -->
+    <div class="stats-row">
+        <div class="stat-card">
+            <div class="stat-value" id="team-name">--</div>
+            <div class="stat-label">我的球队</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value" id="team-rank">--</div>
+            <div class="stat-label">当前排名</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value" id="team-record">--</div>
+            <div class="stat-label">战绩 (胜-负)</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value" id="team-win-pct">--</div>
+            <div class="stat-label">胜率</div>
+        </div>
+    </div>
+
+    <!-- 今日比赛提示 (Requirements 5.1, 7.1) -->
+    <div class="today-game hidden" id="today-game-card">
+        <div class="today-game-title">📅 今日比赛</div>
+        <div class="today-game-teams">
+            <span id="today-home-team">--</span>
+            <span class="vs-text">VS</span>
+            <span id="today-away-team">--</span>
+        </div>
+        <div class="today-game-status" id="today-game-status" style="margin-top: 10px; text-align: center;">
+            <!-- 比赛状态：未开始/已完成 -->
+        </div>
+        <div class="text-center mt-2" id="today-game-action">
+            <button class="btn btn-lg" style="background: white; color: var(--primary-color);" 
+                    onclick="GameApp.goToMatch()">
+                🏀 开始比赛
+            </button>
+        </div>
+    </div>
+
+    <!-- 快捷操作 -->
+    <div class="grid grid-2 mt-2">
+        <!-- 联赛排名 (常规赛显示) -->
+        <div class="card" id="standings-card">
+            <div class="card-header">🏆 联赛排名</div>
+            <div class="card-body">
+                <div class="table-container">
+                    <table class="table" id="standings-table">
+                        <thead>
+                            <tr>
+                                <th>排名</th>
+                                <th>球队</th>
+                                <th>胜</th>
+                                <th>负</th>
+                                <th>胜率</th>
+                            </tr>
+                        </thead>
+                        <tbody id="standings-body">
+                            <!-- 动态加载 -->
+                        </tbody>
+                    </table>
+                </div>
+                <div class="text-center mt-1">
+                    <button class="btn btn-sm btn-outline" onclick="GameApp.showPage('standings')">
+                        查看完整排名
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 季后赛对阵图 (季后赛阶段显示) (Requirements 2.1, 2.2, 2.3, 2.4) -->
+        <div class="card" id="playoff-bracket-card" style="display: none;">
+            <div class="card-header">🏆 季后赛对阵</div>
+            <div class="card-body">
+                <div id="playoff-bracket">
+                    <!-- 动态生成对阵图 -->
+                </div>
+            </div>
+        </div>
+
+        <!-- 近期赛程 -->
+        <div class="card" id="upcoming-games-card">
+            <div class="card-header">📅 近期赛程</div>
+            <div class="card-body">
+                <div id="upcoming-games">
+                    <!-- 动态加载 -->
+                </div>
+                <div class="text-center mt-1">
+                    <button class="btn btn-sm btn-outline" onclick="GameApp.showPage('schedule')">
+                        查看完整赛程
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 季后赛状态卡片 (季后赛阶段显示) -->
+        <div class="card" id="playoff-status-card" style="display: none;">
+            <div class="card-header">📊 季后赛状态</div>
+            <div class="card-body">
+                <div id="playoff-status-content">
+                    <!-- 动态加载 -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 可用操作 -->
+    <div class="card mt-2">
+        <div class="card-header">🎯 可用操作</div>
+        <div class="card-body">
+            <div class="grid grid-4" id="available-actions">
+                <button class="btn btn-outline" onclick="GameApp.showPage('roster')">
+                    👥 查看阵容
+                </button>
+                <button class="btn btn-outline" onclick="GameApp.showPage('training')" id="btn-training">
+                    🏋️ 球员训练
+                </button>
+                <button class="btn btn-outline" onclick="GameApp.showPage('trade')">
+                    🔄 交易中心
+                </button>
+                <button class="btn btn-outline" onclick="GameApp.showPage('leaderboard')">
+                    📊 数据榜单
+                </button>
+                <button class="btn btn-outline" onclick="GameApp.showPage('daily-games')">
+                    📺 当日比赛
+                </button>
+                <button class="btn btn-outline" onclick="GameApp.showPage('schedule')">
+                    📅 赛程表
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
