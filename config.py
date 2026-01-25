@@ -10,8 +10,8 @@ class LLMConfig:
     """LLM API配置类"""
     
     # API密钥 - 优先从环境变量读取
-    # API_KEY: str = os.getenv("LLM_API_KEY", "")
-    API_KEY: str = "sk-99f6a0a1cb5643cdba0f89d55cba079a"
+    # API_KEY: str = "your_api_key"
+    API_KEY: str = os.getenv("LLM_API_KEY", "")
     
     # API端点 - 默认使用DeepSeek
     BASE_URL: str = os.getenv("LLM_BASE_URL", "https://api.deepseek.com/v1")
