@@ -1,0 +1,192 @@
+{
+  "teams": {
+    "team_500a88": {
+      "id": "team_500a88",
+      "name": "北京龙骧",
+      "city": "北京",
+      "status": "contending",
+      "is_player_controlled": false,
+      "roster": [
+        "player_e178dedc",
+        "player_fa758bd0",
+        "player_36cfda7d",
+        "player_c6967a95",
+        "player_8acfc2cc",
+        "player_fbc80f6f",
+        "player_c96fb82d",
+        "player_72c6505a",
+        "player_90b453db"
+      ]
+    },
+    "team_5f24ff": {
+      "id": "team_5f24ff",
+      "name": "上海白鲨",
+      "city": "上海",
+      "status": "contending",
+      "is_player_controlled": false,
+      "roster": [
+        "player_ad8ed175",
+        "player_0b29c58f",
+        "player_2d21ba42",
+        "player_4b95c45f",
+        "player_93338afc",
+        "player_5057de8d",
+        "player_9974615e",
+        "player_a8a26854"
+      ]
+    },
+    "team_3d8e32": {
+      "id": "team_3d8e32",
+      "name": "广州南粤雄狮",
+      "city": "广州",
+      "status": "contending",
+      "is_player_controlled": false,
+      "roster": [
+        "player_05e61f28",
+        "player_5848c690",
+        "player_b566927f",
+        "player_ec56bf28",
+        "player_6a52b589",
+        "player_1cfb2c59",
+        "player_c0006d67",
+        "player_22ecd4bf"
+      ]
+    },
+    "team_b6dfd7": {
+      "id": "team_b6dfd7",
+      "name": "成都锦官虎",
+      "city": "成都",
+      "status": "stable",
+      "is_player_controlled": false,
+      "roster": []
+    },
+    "team_6feb04": {
+      "id": "team_6feb04",
+      "name": "西安秦锐士",
+      "city": "西安",
+      "status": "rebuilding",
+      "is_player_controlled": false,
+      "roster": []
+    },
+    "team_66c5f9": {
+      "id": "team_66c5f9",
+      "name": "杭州钱塘潮",
+      "city": "杭州",
+      "status": "stable",
+      "is_player_controlled": false,
+      "roster": []
+    },
+    "team_7a0dd7": {
+      "id": "team_7a0dd7",
+      "name": "武汉荆楚蛟",
+      "city": "武汉",
+      "status": "rebuilding",
+      "is_player_controlled": false,
+      "roster": []
+    },
+    "team_aabccc": {
+      "id": "team_aabccc",
+      "name": "深圳鹏城烈焰",
+      "city": "深圳",
+      "status": "contending",
+      "is_player_controlled": false,
+      "roster": []
+    },
+    "team_d544d5": {
+      "id": "team_d544d5",
+      "name": "天津渤海鹰",
+      "city": "天津",
+      "status": "stable",
+      "is_player_controlled": false,
+      "roster": []
+    },
+    "team_1043f2": {
+      "id": "team_1043f2",
+      "name": "南京金陵麒麟",
+      "city": "南京",
+      "status": "rebuilding",
+      "is_player_controlled": false,
+      "roster": []
+    },
+    "team_60b0f2": {
+      "id": "team_60b0f2",
+      "name": "重庆山城磐石",
+      "city": "重庆",
+      "status": "stable",
+      "is_player_controlled": false,
+      "roster": []
+    },
+    "team_a43dbe": {
+      "id": "team_a43dbe",
+      "name": "青岛黄海蛟龙",
+      "city": "青岛",
+      "status": "rebuilding",
+      "is_player_controlled": false,
+      "roster": []
+    },
+    "team_04b23d": {
+      "id": "team_04b23d",
+      "name": "苏州吴钩剑",
+      "city": "苏州",
+      "status": "stable",
+      "is_player_controlled": false,
+      "roster": []
+    },
+    "team_33f7ad": {
+      "id": "team_33f7ad",
+      "name": "长沙岳麓雷",
+      "city": "长沙",
+      "status": "stable",
+      "is_player_controlled": false,
+      "roster": []
+    },
+    "team_4274b1": {
+      "id": "team_4274b1",
+      "name": "厦门鹭岛风暴",
+      "city": "厦门",
+      "status": "stable",
+      "is_player_controlled": false,
+      "roster": []
+    },
+    "team_672690": {
+      "id": "team_672690",
+      "name": "西宁昆仑雪豹",
+      "city": "西宁",
+      "status": "rebuilding",
+      "is_player_controlled": false,
+      "roster": []
+    },
+    "team_9c494c": {
+      "id": "team_9c494c",
+      "name": "哈尔滨北境狼",
+      "city": "哈尔滨",
+      "status": "stable",
+      "is_player_controlled": false,
+      "roster": []
+    },
+    "team_3a020d": {
+      "id": "team_3a020d",
+      "name": "昆明滇池云鹰",
+      "city": "昆明",
+      "status": "contending",
+      "is_player_controlled": false,
+      "roster": []
+    },
+    "team_f46c32": {
+      "id": "team_f46c32",
+      "name": "石家庄冀州铁骑",
+      "city": "石家庄",
+      "status": "rebuilding",
+      "is_player_controlled": false,
+      "roster": []
+    },
+    "team_7e986d": {
+      "id": "team_7e986d",
+      "name": "乌鲁木齐天山雪狼",
+      "city": "乌鲁木齐",
+      "status": "stable",
+      "is_player_controlled": false,
+      "roster": []
+    }
+  }
+}

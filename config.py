@@ -44,8 +44,6 @@ class SimulationConfig:
     """模拟配置类 - 用于调试切换LLM/本地算法"""
     
     # 是否使用LLM进行比赛模拟
-    # True: 使用LLM模拟（默认，正常模式）
-    # False: 使用本地算法模拟（调试模式，更快）
     USE_LLM: bool = True
 
 

@@ -6,6 +6,23 @@
 
 在这款游戏中，你将成为一支球队的总经理，通过球员训练、交易和外援市场来完善球队阵容，带领球队征战整个赛季，目标是夺取总冠军！
 
+<p align="center">
+  <img src="figures/1.png" width="45%" />
+  <img src="figures/2.png" width="45%" />
+</p>
+<p align="center">
+  <img src="figures/8.png" width="45%" />
+  <img src="figures/4.png" width="45%" />
+</p>
+<p align="center">
+  <img src="figures/5.png" width="45%" />
+  <img src="figures/6.png" width="45%" />
+</p>
+<p align="center">
+  <img src="figures/7.png" width="45%" />
+  <img src="figures/3.png" width="45%" />
+</p>
+
 ### 游戏特色
 
 - 🏆 20支球队可供选择
@@ -115,9 +132,9 @@ http://localhost:5000
 
 你将看到游戏主界面，可以开始新游戏或加载存档！
 
-### 第六步：球队和阵容配置（可选）
+### 第六步：球队和阵容配置
 
-经过以上五步，游戏已经可以正常游玩。当前游戏默认是20支虚拟球队，每支球队拥有13~14位虚拟球员。用户可以通过tools文件夹下的工具，进行自定义球队配置和自定义球员编辑。工具使用说明可见./tools/README.md
+经过以上五步，游戏已经可以正常打开。当前游戏默认是20支虚拟球队。用户可以通过tools文件夹下的工具，进行自定义球队配置和自定义球员编辑。工具使用说明可见./tools/README.md
 
 > 若想直接游玩真实球队和球员名单，可以联系邮箱：tanhao4869@gmail.com
 
