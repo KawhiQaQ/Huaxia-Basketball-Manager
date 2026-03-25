@@ -49,7 +49,8 @@ class GameController:
         injury_system: Optional[InjurySystem] = None,
         teams: Optional[Dict[str, Team]] = None,
         players: Optional[Dict[str, Player]] = None,
-        player_team_id: Optional[str] = None
+        player_team_id: Optional[str] = None,
+        foreign_market=None
     ):
         """
         初始化游戏控制器
@@ -70,9 +71,9 @@ class GameController:
         self.teams = teams or {}
         self.players = players or {}
         self.player_team_id = player_team_id
+        self.foreign_market = foreign_market
         
         # 当前日期从赛季管理器获取
-        self._current_date = season_manager.current_date
         
         # 玩家今日比赛是否完成 (Requirements 5.4, 7.1, 7.2)
         self.player_match_completed_today: bool = False
@@ -594,7 +595,11 @@ class GameController:
             calculate_overall_func=calculate_overall
         )
         
-        # 设置季后赛阶段标志
+        # 清理外援市场（进入季后赛后，所有未签约外援视为放弃）
+        if self.foreign_market:
+            self.foreign_market.clear_all_scouted_players()
+        
+        # 设置季后赛阶段标志（放在清理之后，避免半初始化状态）
         self.is_playoff_phase = True
         
         # 重置玩家淘汰状态
@@ -602,10 +607,6 @@ class GameController:
         
         # 重置玩家本轮比赛标志
         self.player_playoff_game_played_this_round = False
-        
-        # 清理外援市场（进入季后赛后，所有未签约外援视为放弃）
-        if self.foreign_market:
-            self.foreign_market.clear_all_scouted_players()
         
         # 获取季后赛球队信息
         playoff_teams = []

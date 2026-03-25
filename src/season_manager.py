@@ -1199,23 +1199,13 @@ class SeasonManager:
             if player.team_id not in ai_team_ids:
                 continue
             
-            # 随机生成调整值 (-2 到 +2)
+            # 随机调整总评 (-2 到 +2)，不改变各项属性
             adjustment = random.randint(-2, 2)
             
             if adjustment == 0:
-                # 没有调整，跳过
                 continue
             
-            # 调整各项属性
-            player.offense = max(0, min(99, player.offense + adjustment))
-            player.defense = max(0, min(99, player.defense + adjustment))
-            player.three_point = max(0, min(99, player.three_point + adjustment))
-            player.rebounding = max(0, min(99, player.rebounding + adjustment))
-            player.passing = max(0, min(99, player.passing + adjustment))
-            player.stamina = max(0, min(99, player.stamina + adjustment))
-            
-            # 重新计算总评
-            player.overall = calculate_overall_func(player)
+            player.overall = max(0, min(99, player.overall + adjustment))
             
             # 记录调整
             adjustments[player_id] = adjustment

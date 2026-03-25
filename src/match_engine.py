@@ -453,6 +453,130 @@ class MatchEngine:
                     results.append((fallback_result, []))
         
         return results
+
+    def batch_simulate_playoff_ai_matches(
+        self,
+        series_matches: List[Tuple[str, str, str]],
+        teams: Dict[str, Team],
+        players: Dict[str, Player],
+        auto_update_stats: bool = True,
+        check_injuries: bool = True
+    ) -> List[Tuple[str, MatchResult, List[Tuple[Player, int]]]]:
+        """
+        批量并发模拟季后赛AI比赛
+
+        与 batch_simulate_ai_matches 类似，但接受季后赛系列赛数据而非 ScheduledGame。
+
+        Args:
+            series_matches: [(series_id, home_team_id, away_team_id), ...] 列表
+            teams: 球队字典
+            players: 球员字典
+            auto_update_stats: 是否自动更新球员统计数据
+            check_injuries: 是否检查伤病
+
+        Returns:
+            [(series_id, MatchResult, 新伤病列表), ...] 列表
+        """
+        from config import LLMConfig, SimulationConfig
+
+        results = []
+
+        if not series_matches:
+            return results
+
+        use_concurrent = (
+            SimulationConfig.USE_LLM and
+            self.llm is not None and
+            LLMConfig.ENABLE_CONCURRENT_SIMULATION and
+            len(series_matches) > 1
+        )
+
+        if use_concurrent:
+            matches_data = []
+            game_meta = []  # (series_id, active_home_players, active_away_players)
+
+            for series_id, home_team_id, away_team_id in series_matches:
+                home_team = teams.get(home_team_id)
+                away_team = teams.get(away_team_id)
+
+                if not home_team or not away_team:
+                    print(f"警告: 找不到球队 {home_team_id} 或 {away_team_id}")
+                    continue
+
+                home_players_list = self._get_team_players(home_team, players)
+                away_players_list = self._get_team_players(away_team, players)
+                active_home = [p for p in home_players_list if not p.is_injured and not p.is_waived]
+                active_away = [p for p in away_players_list if not p.is_injured and not p.is_waived]
+
+                matches_data.append({
+                    "home_team": home_team,
+                    "away_team": away_team,
+                    "home_players": active_home,
+                    "away_players": active_away
+                })
+                game_meta.append((series_id, active_home, active_away))
+
+            if matches_data:
+                match_results = self.llm.batch_simulate_matches_concurrent(matches_data)
+
+                for i, result in enumerate(match_results):
+                    sid, active_home, active_away = game_meta[i]
+
+                    if auto_update_stats and self.data_manager:
+                        self._update_all_player_stats(result, is_playoff=True)
+
+                    new_injuries = []
+                    if check_injuries:
+                        all_active = active_home + active_away
+                        new_injuries = self.injury_system.check_for_injuries(all_active)
+                        for player, days in new_injuries:
+                            self.injury_system.apply_injury(player, days)
+
+                    results.append((sid, result, new_injuries))
+        else:
+            # 串行回退
+            for series_id, home_team_id, away_team_id in series_matches:
+                try:
+                    home_team = teams.get(home_team_id)
+                    away_team = teams.get(away_team_id)
+                    if not home_team or not away_team:
+                        continue
+
+                    home_players_list = self._get_team_players(home_team, players)
+                    away_players_list = self._get_team_players(away_team, players)
+                    active_home = [p for p in home_players_list if not p.is_injured and not p.is_waived]
+                    active_away = [p for p in away_players_list if not p.is_injured and not p.is_waived]
+
+                    if SimulationConfig.USE_LLM and self.llm is not None:
+                        result = self.llm.simulate_match_quick(
+                            home_team=home_team,
+                            away_team=away_team,
+                            home_players=active_home,
+                            away_players=active_away
+                        )
+                    else:
+                        result = self._generate_fallback_match_result(
+                            home_team_id, away_team_id, active_home, active_away
+                        )
+
+                    if auto_update_stats and self.data_manager:
+                        self._update_all_player_stats(result, is_playoff=True)
+
+                    new_injuries = []
+                    if check_injuries:
+                        all_active = active_home + active_away
+                        new_injuries = self.injury_system.check_for_injuries(all_active)
+                        for player, days in new_injuries:
+                            self.injury_system.apply_injury(player, days)
+
+                    results.append((series_id, result, new_injuries))
+                except Exception as e:
+                    print(f"警告: 模拟季后赛 {series_id} ({home_team_id} vs {away_team_id}) 失败: {e}")
+                    fallback = self._create_empty_fallback_result(home_team_id, away_team_id)
+                    results.append((series_id, fallback, []))
+
+        return results
+
     
     def _create_empty_fallback_result(
         self,

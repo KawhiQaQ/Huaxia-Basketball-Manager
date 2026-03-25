@@ -13,7 +13,7 @@ class InjurySystem:
     """伤病系统 - 负责伤病检测、应用和恢复"""
     
     # 每场比赛每人受伤概率 (2%)
-    INJURY_PROBABILITY = 0.1
+    INJURY_PROBABILITY = 0.01
     
     # 恢复天数范围 (3-21天)
     INJURY_DURATION_MIN = 3

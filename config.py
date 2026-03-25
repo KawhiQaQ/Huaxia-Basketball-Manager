@@ -10,8 +10,8 @@ class LLMConfig:
     """LLM API配置类"""
     
     # API密钥 - 优先从环境变量读取
-    # API_KEY: str = "your_api_key"
-    API_KEY: str = os.getenv("LLM_API_KEY", "")
+    # API_KEY: str = os.getenv("LLM_API_KEY", "")
+    API_KEY: str = "your_api_key"
     
     # API端点 - 默认使用DeepSeek
     BASE_URL: str = os.getenv("LLM_BASE_URL", "https://api.deepseek.com/v1")
@@ -72,7 +72,7 @@ class GameConfig:
     TRAINING_MAX_BOOST: int = 3
     
     # 伤病配置
-    INJURY_PROBABILITY: float = 0.005
+    INJURY_PROBABILITY: float = 0.01
     INJURY_MIN_DAYS: int = 3
     INJURY_MAX_DAYS: int = 21
     

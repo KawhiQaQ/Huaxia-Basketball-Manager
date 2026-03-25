@@ -143,7 +143,8 @@ class GameStateManager:
                 injury_system=injury_system,
                 teams=self.teams,
                 players=self.players,
-                player_team_id=player_team_id
+                player_team_id=player_team_id,
+                foreign_market=self.foreign_market
             )
             
             # 初始化榜单和数据查看器
@@ -217,7 +218,8 @@ class GameStateManager:
                 injury_system=injury_system,
                 teams=self.teams,
                 players=self.players,
-                player_team_id=self.player_team_id
+                player_team_id=self.player_team_id,
+                foreign_market=self.foreign_market
             )
             self.game_controller._current_date = state.current_date
             
@@ -2456,61 +2458,118 @@ def advance_playoffs():
         series_updates = []
         
         # 获取所有进行中的系列赛
-        # 使用 list() 创建副本，避免在遍历过程中修改字典导致 "dictionary changed size during iteration" 错误
         bracket = season_manager.get_playoff_bracket()
         series_items = list(bracket.items())
         
+        # 收集需要模拟的AI系列赛
+        ai_series_to_simulate = []
         for series_id, series in series_items:
-            # 跳过非系列赛对象（如种子列表）
             if not hasattr(series, 'is_complete'):
                 continue
-            
-            # 跳过已完成的系列赛
             if series.is_complete:
                 continue
-            
-            # 检查是否涉及玩家球队
             involves_player = (series.team1_id == player_team_id or 
                              series.team2_id == player_team_id)
-            
-            # 如果涉及玩家球队且玩家未淘汰，跳过（让玩家自己打）
             if involves_player and not controller.player_eliminated:
                 continue
+            ai_series_to_simulate.append((series_id, series))
+        
+        if ai_series_to_simulate:
+            # 准备批量模拟数据: [(series_id, home_team_id, away_team_id), ...]
+            series_matches = [
+                (sid, s.team1_id, s.team2_id) for sid, s in ai_series_to_simulate
+            ]
             
-            # 模拟这场比赛
-            try:
-                result, series_update = controller.simulate_playoff_game(
+            # 批量并发模拟所有AI季后赛比赛
+            batch_results = game_state.match_engine.batch_simulate_playoff_ai_matches(
+                series_matches=series_matches,
+                teams=game_state.teams,
+                players=game_state.players,
+                auto_update_stats=True,
+                check_injuries=True
+            )
+            
+            # 处理每场比赛结果：更新系列赛比分、检查淘汰等
+            for series_id, result, injuries in batch_results:
+                if not result:
+                    continue
+                
+                # 确定本场胜者
+                series = bracket.get(series_id)
+                if result.home_score > result.away_score:
+                    game_winner_id = series.team1_id
+                else:
+                    game_winner_id = series.team2_id
+                
+                # 更新系列赛比分
+                series_complete, series_winner = season_manager.update_playoff_series(
                     series_id=series_id,
-                    use_llm=True
+                    winner_id=game_winner_id,
+                    game_result=result
                 )
                 
-                if result:
-                    home_team = game_state.teams.get(result.home_team_id)
-                    away_team = game_state.teams.get(result.away_team_id)
-                    
-                    # 格式化球员统计数据（与常规赛一致）
-                    formatted_player_stats = _format_player_stats_for_response(
-                        result.player_stats,
-                        result.home_team_id,
-                        result.away_team_id
-                    )
-                    
-                    simulated_games.append({
-                        "series_id": series_id,
-                        "home_team_id": result.home_team_id,
-                        "home_team_name": home_team.name if home_team else "",
-                        "away_team_id": result.away_team_id,
-                        "away_team_name": away_team.name if away_team else "",
-                        "home_score": result.home_score,
-                        "away_score": result.away_score,
-                        "player_stats": formatted_player_stats
-                    })
-                    
-                    series_updates.append(series_update)
-                    
-            except Exception as e:
-                print(f"Error simulating series {series_id}: {e}")
-                continue
+                # 检查是否创建了下一轮对阵
+                next_round_created = False
+                if series_complete:
+                    new_bracket = season_manager.get_playoff_bracket()
+                    if series_id.startswith("play_in_"):
+                        next_round_created = any(
+                            f"quarter_{i}" in new_bracket for i in range(1, 5)
+                        )
+                    elif series_id.startswith("quarter_"):
+                        next_round_created = any(
+                            f"semi_{i}" in new_bracket for i in range(1, 3)
+                        )
+                    elif series_id.startswith("semi_"):
+                        next_round_created = "final" in new_bracket
+                
+                # 检查玩家球队是否被淘汰
+                player_eliminated = False
+                is_champion = False
+                if controller.player_team_id:
+                    if season_manager.is_team_eliminated(controller.player_team_id):
+                        controller.player_eliminated = True
+                        player_eliminated = True
+                    champion = season_manager.get_champion()
+                    if champion == controller.player_team_id:
+                        is_champion = True
+                
+                # 获取胜者名称
+                winner_name = None
+                if series_winner and series_winner in game_state.teams:
+                    winner_name = game_state.teams[series_winner].name
+                
+                home_team = game_state.teams.get(result.home_team_id)
+                away_team = game_state.teams.get(result.away_team_id)
+                
+                formatted_player_stats = _format_player_stats_for_response(
+                    result.player_stats,
+                    result.home_team_id,
+                    result.away_team_id
+                )
+                
+                simulated_games.append({
+                    "series_id": series_id,
+                    "home_team_id": result.home_team_id,
+                    "home_team_name": home_team.name if home_team else "",
+                    "away_team_id": result.away_team_id,
+                    "away_team_name": away_team.name if away_team else "",
+                    "home_score": result.home_score,
+                    "away_score": result.away_score,
+                    "player_stats": formatted_player_stats
+                })
+                
+                series_updates.append({
+                    "series_id": series_id,
+                    "team1_wins": series.team1_wins,
+                    "team2_wins": series.team2_wins,
+                    "is_complete": series_complete,
+                    "winner_id": series_winner,
+                    "winner_name": winner_name,
+                    "next_round_created": next_round_created,
+                    "player_eliminated": player_eliminated,
+                    "is_champion": is_champion
+                })
         
         # 重置玩家的"本轮已打"标志，允许玩家打下一场
         # 无论是否有AI比赛被模拟，都应该重置标志
